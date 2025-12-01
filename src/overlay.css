@@ -1,0 +1,24 @@
+* {
+	box-sizing: border-box;
+}
+
+video {
+	position: absolute;
+	background-color: #000000;
+	aspect-ratio: 16 / 9;
+
+	&#camera {
+		height: 200px;
+		bottom: 0px;
+		right: 0px;
+		z-index: 10;
+		border-radius: 100rem;
+	}
+
+	&#screen {
+		width: 100%;
+		height: 100%;
+		top: 0;
+		left: 0;
+	}
+}
