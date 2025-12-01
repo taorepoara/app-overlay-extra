@@ -20,7 +20,7 @@ async function initWebSocketConnection(type, onMessage) {
 	return new Promise((resolve, reject) => {
 
 		// Replace with your server URL
-		const serverUrl = `ws://${location.host}/ws`;
+		const serverUrl = `ws${location.protocol.includes("https") ? 's': ''}://${location.host}/ws`;
 		const socket = new WebSocket(serverUrl);
 
 		socket.onopen = () => {
