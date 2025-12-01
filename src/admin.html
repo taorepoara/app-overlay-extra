@@ -14,8 +14,12 @@
 		<p>This is the admin page content.</p>
 		<section id="preview">
 			<video id="camera" autoplay muted></video>
+			<select id="cameraSelect" onchange="addUserCamera()"></select>
+			<select id="micSelect" onchange="addUserCamera()"></select>
+			<!-- <button onclick="addUserCamera()">Init camera</button> -->
 			<video id="screen" autoplay muted></video>
-			<button onclick="initUserScreenShare()">Init</button>
+			<select id="screenSelect"></select>
+			<!-- <button onclick="addDeviceShare()">Init screen</button> -->
 		</section>
 	</main>
 </body>
