@@ -32,9 +32,9 @@ initWebSocketConnection("overlay", async (message) => {
 			candidate: event.candidate,
 		}));
 	};
-
-	// alert("Overlay connected to server");
-	// socket.send(JSON.stringify({ type: "new-overlay" }));
+	return alertModal("Overlay connected to server.");
+}).then(() => {
+	socket.send(JSON.stringify({ type: "new-overlay" }));
 });
 
 const streams = {};
@@ -63,3 +63,22 @@ pc.ontrack = (ev) => {
 	}
 	addedTracks.push(ev.track);
 };
+
+function alertModal(message) {
+	return new Promise((resolve) => {
+		const modal = document.createElement("dialog");
+		const modalMessage = document.createElement("p");
+		const closeButton = document.createElement("button");
+		closeButton.textContent = "Close";
+		modalMessage.textContent = message;
+		closeButton.addEventListener("click", () => {
+			modal.close();
+			document.body.removeChild(modal);
+			resolve();
+		});
+		modal.appendChild(modalMessage);
+		modal.appendChild(closeButton);
+		document.body.appendChild(modal);
+		modal.showModal();
+	});
+}

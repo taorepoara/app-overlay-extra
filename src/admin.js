@@ -11,7 +11,7 @@ initUserCameraAndMic()
 			console.log("Received message in admin: ", message);
 			const data = JSON.parse(message);
 			switch (data.type) {
-				case "offer":
+				case "answer":
 					await pc.setRemoteDescription(new RTCSessionDescription(data));
 					break;
 				case "ice-candidate":
