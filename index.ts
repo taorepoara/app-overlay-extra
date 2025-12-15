@@ -2,6 +2,7 @@ import { serve, type ServerWebSocket } from "bun";
 
 const admins:ServerWebSocket<any>[] = [];
 const overlays:ServerWebSocket<any>[] = [];
+let currentScene: string = "start";
 
 const server = Bun.serve({
   port: 3000,
@@ -57,11 +58,18 @@ const server = Bun.serve({
 					if (list.indexOf(ws) === -1) {
 						list.push(ws);
 						console.log("Registered new connection");
+						ws.send(JSON.stringify({ type: "set-scene", scene: currentScene }));
 					}
 					return;
 				}
 			}
+			console.log("Forwarding message", message);
 			if (admins.indexOf(ws) !== -1) {
+				const json = JSON.parse(message.toString());
+				if (json.type === "set-scene" && typeof json.scene === "string") {
+					currentScene = json.scene;
+					console.log("Updated current scene to", currentScene);
+				}
 				// Forward the message to all overlays
 				overlays.forEach(overlayWs => {
 					if (overlayWs.readyState === WebSocket.OPEN) {

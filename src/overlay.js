@@ -21,6 +21,19 @@ initWebSocketConnection("overlay", async (message) => {
 				console.error("Error adding received ICE candidate", e);
 			}
 			break;
+		case "new-source":
+			console.log("New source: ", data.source);
+			addSource(data.source);
+			break;
+		case "set-scene":
+			setScene(data.scene);
+			break;
+		case "refresh":
+			location.reload();
+			break;
+		case "refresh-css":
+			refreshCss();
+			break;
 		default:
 			console.warn("Unknown message type received: ", data);
 	}
@@ -39,30 +52,25 @@ initWebSocketConnection("overlay", async (message) => {
 });
 
 const streams = {};
-let addedTracks = [];
+/**
+ * @type {{[key: string]: MediaStreamTrack}}
+ */
+const tracks = {};
+/**
+ * @type {{type: "camera" | "screen", trackIds: string[], stream?: MediaStream}[]}
+ */
+const sources = [];
 pc.ontrack = (ev) => {
 	console.log("Track received: ", ev);
-	const id = addedTracks.length < 2 ? "camera" : "screen";
-	const video = document.getElementById(id);
-	console.log("Setting stream to video element: ", id, video);
-	video.onloadedmetadata = function (e) {
-		console.log("Metadata loaded, playing video...", e);
-		video.play();
-	};
-	video.onerror = (e) => {
-		console.error("Erreur lors de la lecture de la vidéo :", e);
-	};
-	if (ev.streams && ev.streams[0]) {
-		video.srcObject = ev.streams[0];
+	const trackId = ev.track.id;
+	tracks[trackId] = ev.track;
+	const source = sources.find((s) => s.trackIds.includes(trackId));
+	if (source) {
+		console.log("Initializing source stream for received track: ", source);
+		initSourceStream(source);
 	} else {
-		console.log("Creating new inbound stream");
-		if (!(id in streams)) {
-			streams[id] = new MediaStream();
-			video.srcObject = streams[id];
-		}
-		streams[id].addTrack(ev.track);
+		console.warn("No source found for received track ID: ", trackId);
 	}
-	addedTracks.push(ev.track);
 };
 
 function alertModal(message) {
@@ -82,4 +90,69 @@ function alertModal(message) {
 		document.body.appendChild(modal);
 		modal.showModal();
 	});
+}
+
+/**
+ * @param {string} scene 
+ */
+function setScene(scene) {
+	const main = document.querySelector("main");
+	if (main) {
+		main.dataset.previousScene = main.dataset.scene;
+		main.dataset.scene = scene;
+		document.getElementById("camera").muted = scene === "start";
+		document.getElementById("screen").muted = !scene.includes("screen");
+		console.log("Scene set to: ", scene);
+	} else {
+		console.error("Main element not found to set scene.");
+	}
+}
+
+function refreshCss() {
+	const links = document.getElementsByTagName("link");
+	for (let i = 0; i < links.length; i++) {
+		const link = links[i];
+		if (link.rel === "stylesheet") {
+			const href = link.href.split("?")[0];
+			link.href = href + "?v=" + new Date().getTime();
+			console.log("Refreshed CSS: ", link.href);
+		}
+	}
+}
+
+function addSource(source) {
+	sources.push(source);
+	initSourceStream(source);
+}
+
+function initSourceStream(source) {
+	if (source.stream) return;
+	const { type, trackIds } = source;
+	const tracksToAdd = trackIds
+		.map((id) => tracks[id]);
+	if (tracksToAdd.some((t) => !t)) {
+		console.error("Some tracks to add were not found: ", trackIds, tracksToAdd);
+		return;
+	}
+	const stream = new MediaStream(tracksToAdd);
+	tracksToAdd.forEach((track) => {
+		console.log(`Adding track to source stream (${type}): `, track);
+		stream.addTrack(track);
+	});
+	source.stream = stream;
+	const videoElement = document.getElementById(type);
+	if (videoElement) {
+		const video = document.getElementById(type);
+		console.log("Setting stream to video element: ", type, video);
+		video.onloadedmetadata = function (e) {
+			console.log("Metadata loaded, playing video...", e);
+			video.play();
+		};
+		video.onerror = (e) => {
+			console.error("Erreur lors de la lecture de la vidéo :", e);
+		};
+		video.srcObject = stream;
+	} else {
+		console.error(`Video element for ${type} source not found.`);
+	}
 }

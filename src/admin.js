@@ -22,6 +22,9 @@ initWebSocketConnection("admin", async (message) => {
 		case "new-overlay":
 			createPeerConnection();
 			break;
+		case "set-scene":
+			document.getElementById('scene').value = data.scene;
+			break;
 		default:
 			console.warn("Unknown message type received: ", data);
 	}
@@ -31,11 +34,12 @@ initWebSocketConnection("admin", async (message) => {
 });
 
 
-async function updateUserDevices() {
+async function updateMediaDevices() {
 	const devices = await navigator.mediaDevices.enumerateDevices();
+	console.log("Available media devices: ", devices);
 	const videoDevices = devices.filter(device => device.kind === 'videoinput');
 	const cameraSelect = document.getElementById('cameraSelect');
-	cameraSelect.innerHTML = '<option value="">Select Camera</option>';
+	cameraSelect.innerHTML = '<option value="">Sélectionner une caméra</option>';
 	videoDevices.forEach(device => {
 		const option = document.createElement('option');
 		option.value = device.deviceId;
@@ -44,7 +48,7 @@ async function updateUserDevices() {
 	});
 	const audioDevices = devices.filter(device => device.kind === 'audioinput');
 	const micSelect = document.getElementById('micSelect');
-	micSelect.innerHTML = '<option value="">Select Camera</option>';
+	micSelect.innerHTML = '<option value="">Sélectionner un micro</option>';
 	audioDevices.forEach(device => {
 		const option = document.createElement('option');
 		option.value = device.deviceId;
@@ -53,12 +57,40 @@ async function updateUserDevices() {
 	});
 }
 
-updateUserDevices();
+updateMediaDevices();
 
 navigator.mediaDevices.ondevicechange = () => {
 	console.log("Media devices changed, updating device lists...");
-	updateUserDevices();
+	updateMediaDevices();
 };
+
+async function previewUserCamera() {
+	console.log("Initializing user camera and mic...");
+
+	const cameraSelect = document.getElementById('cameraSelect');
+	const micSelect = document.getElementById('micSelect');
+	const cameraDeviceId = cameraSelect.value;
+	const micDeviceId = micSelect.value;
+	const type = "camera";
+	const videoElement = document.getElementById(type);
+	videoElement.srcObject = null;
+
+	const userMediaOptions = {};
+	if (cameraDeviceId) {
+		userMediaOptions.video = { deviceId: { exact: cameraDeviceId }, width: { max: 1920, ideal: 1920 }, aspectRatio: { exact: 16 / 9 } };
+	}
+	if (micDeviceId) {
+		userMediaOptions.audio = { deviceId: { exact: micDeviceId }, noiseSuppression: true };
+	}
+
+	try {
+		const stream = await navigator.mediaDevices.getUserMedia(userMediaOptions);
+		videoElement.srcObject = stream;
+		console.log("User camera and mic stream set to video element.");
+	} catch (error) {
+		console.error("Error accessing user camera and mic: ", error);
+	}
+}
 
 async function addUserCamera() {
 	console.log("Initializing user camera and mic...");
@@ -74,10 +106,18 @@ async function addUserCamera() {
 
 	const userMediaOptions = {};
 	if (cameraDeviceId) {
-		userMediaOptions.video = { deviceId: { exact: cameraDeviceId }, width: { max: 1920, ideal: 1920 }, aspectRatio: { exact: 16 / 9 } };
+		/**
+		* @type {MediaTrackConstraints}
+		*/
+		userMediaOptions.video = {
+			deviceId: { exact: cameraDeviceId },
+			width: { max: 1920, ideal: 1920 },
+			aspectRatio: { exact: 16 / 9 },
+			// backgroundBlur: true,
+		};
 	}
 	if (micDeviceId) {
-		userMediaOptions.audio = { deviceId: { exact: micDeviceId } };
+		userMediaOptions.audio = { deviceId: { exact: micDeviceId }, noiseSuppression: true };
 	}
 
 	try {
@@ -97,7 +137,10 @@ async function addDeviceShare() {
 		const stream = await navigator.mediaDevices.getDisplayMedia({
 			video: {
 				cursor: "always"
-			}, audio: true
+			}, audio: true,
+			systemAudio: "include",
+			surfaceSwitching: "include",
+			windowAudio: "window",
 		});
 		const screenElement = document.getElementById("screen");
 		if (screenElement) {
@@ -131,11 +174,17 @@ function addStream(type, stream) {
 	removeStream(type);
 	streams[type] = stream;
 	console.log("Adding stream to peer connection: ", stream);
-	stream.getTracks()
-		.forEach((track) => {
+	const ids = stream.getTracks()
+		.map((track) => {
 			console.log("Adding screen track to peer connection: ", track);
-			pc.addTrack(track, stream)
+			pc.addTrack(track, stream);
+			return track.id;
 		});
+	webSocket.send(JSON.stringify({
+		type: "new-source",
+		source: { type, trackIds: ids },
+	}));
+	console.log("Sent new-source message to overlay for type ", type, " with track IDs: ", ids);
 }
 
 async function createPeerConnection() {
@@ -161,5 +210,34 @@ async function createOffer() {
 pc.onnegotiationneeded = async () => {
 	console.log("Negotiation needed event triggered.");
 	await createOffer();
+}
+
+function setScene(scene) {
+	if (webSocket) {
+		webSocket.send(JSON.stringify({ type: "set-scene", scene: scene }));
+		console.log("Sent set-scene message to overlay: ", scene);
+	} else {
+		console.error("WebSocket is not connected. Cannot set scene.");
+	}
+}
+
+function refreshCss() {
+	if (webSocket) {
+		webSocket.send(JSON.stringify({ type: "refresh-css" }));
+		console.log("Sent refresh-css message to overlay.");
+	} else {
+		console.error("WebSocket is not connected. Cannot refresh CSS.");
+	}
+}
+
+function refresh() {
+	if (webSocket) {
+		if (confirm("Êtes-vous sûr de vouloir rafraîchir l'overlay ?")) {
+			webSocket.send(JSON.stringify({ type: "refresh" }));
+			console.log("Sent refresh message to overlay.");
+		}
+	} else {
+		console.error("WebSocket is not connected. Cannot refresh.");
+	}
 }
 

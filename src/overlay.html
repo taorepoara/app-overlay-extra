@@ -7,11 +7,37 @@
 	<script src="./common.js"></script>
 	<script src="./overlay.js"></script>
 	<link rel="stylesheet" href="./overlay.css">
+	<link rel="stylesheet" href="./css/header.css">
+	<link rel="stylesheet" href="./css/footer.css">
 </head>
 <body>
-	<main>
+	<header>
+			<h1>Lenra</h1>
+			<ul>
+					<li>
+							<h2>Last suscriber</h2>
+							<p><strong><output>...</output></strong></p>
+					</li>
+					<li>
+							<h2>Last follower</h2>
+							<p><strong><output>...</output></strong></p>
+					</li>
+					<li>
+							<h2>Latest donation</h2>
+							<p><strong><output>...</output></strong></p>
+					</li>
+					<li id="subsProgress">
+							<p><output>...</output>/<strong>...</strong> Abonnements</p>
+					</li>
+			</ul>
+	</header>
+	<main data-scene="start">
+		<p id="startMessage">J'arrive tout de suite</p>
 		<video id="camera" autoplay playsinline></video>
 		<video id="screen" autoplay playsinline></video>
 	</main>
+	<footer>
+			<p>Chaque soutien apporté à la chaîne nous permet de financer nos projets open source</p>
+	</footer>
 </body>
 </html>

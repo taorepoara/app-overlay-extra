@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,19 +9,35 @@
 	<script src="./admin.js"></script>
 	<link rel="stylesheet" href="./admin.css">
 </head>
+
 <body>
 	<main>
 		<h1>Admin Page</h1>
 		<p>This is the admin page content.</p>
+		<header>
+			<select id="scene" onchange="setScene(this.value)">
+				<option value="start">Start</option>
+				<option value="camera">Camera</option>
+				<option value="screen">Screen</option>
+				<option value="camera-screen">Camera + Screen</option>
+			</select>
+			<button onclick="refreshCss()">Rafraichir le CSS</button>
+			<button onclick="refresh()">Rafraichir tout</button>
+		</header>
 		<section id="preview">
-			<video id="camera" autoplay muted></video>
-			<select id="cameraSelect" onchange="addUserCamera()"></select>
-			<select id="micSelect" onchange="addUserCamera()"></select>
-			<!-- <button onclick="addUserCamera()">Init camera</button> -->
+			<dialog onclose="returnValue && addUserCamera()">
+				<form method="dialog">
+					<video id="camera" autoplay muted></video>
+					<select id="cameraSelect" onchange="previewUserCamera()"></select>
+					<select id="micSelect" onchange="previewUserCamera()"></select>
+					<input type="submit" value="Valider">
+				</form>
+			</dialog>
+			<button onclick="this.previousElementSibling.showModal()">Caméra & micro</button>
 			<video id="screen" autoplay muted></video>
-			<select id="screenSelect"></select>
-			<!-- <button onclick="addDeviceShare()">Init screen</button> -->
+			<button onclick="addDeviceShare()">Capture d'écran</button>
 		</section>
 	</main>
 </body>
+
 </html>
