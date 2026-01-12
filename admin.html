@@ -4,10 +4,8 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Document</title>
-	<script src="./common.js"></script>
-	<script src="./admin.js"></script>
-	<link rel="stylesheet" href="./admin.css">
+	<title>Admin</title>
+	<script type="module" src="/src/client/admin.ts"></script>
 </head>
 
 <body>
@@ -15,27 +13,27 @@
 		<h1>Admin Page</h1>
 		<p>This is the admin page content.</p>
 		<header>
-			<select id="scene" onchange="setScene(this.value)">
+			<select id="scene">
 				<option value="start">Start</option>
 				<option value="camera">Camera</option>
 				<option value="screen">Screen</option>
 				<option value="camera-screen">Camera + Screen</option>
 			</select>
-			<button onclick="refreshCss()">Rafraichir le CSS</button>
-			<button onclick="refresh()">Rafraichir tout</button>
+			<button class="refresh-css">Rafraichir le CSS</button>
+			<button class="refresh">Rafraichir tout</button>
 		</header>
 		<section id="preview">
-			<dialog onclose="returnValue && addUserCamera()">
+			<dialog id="add-camera">
 				<form method="dialog">
 					<video id="camera" autoplay muted></video>
-					<select id="cameraSelect" onchange="previewUserCamera()"></select>
-					<select id="micSelect" onchange="previewUserCamera()"></select>
+					<select id="camera-select"></select>
+					<select id="mic-select"></select>
 					<input type="submit" value="Valider">
 				</form>
 			</dialog>
-			<button onclick="this.previousElementSibling.showModal()">Caméra & micro</button>
+			<button id="open-add-camera">Caméra & micro</button>
 			<video id="screen" autoplay muted></video>
-			<button onclick="addDeviceShare()">Capture d'écran</button>
+			<button id="share-screen">Capture d'écran</button>
 		</section>
 	</main>
 </body>

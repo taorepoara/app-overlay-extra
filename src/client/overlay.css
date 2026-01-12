@@ -84,10 +84,10 @@ body {
 	--bottom-padding: 5;
 	--section-padding-top: 6;
 	--section-padding-bottom: 6;
-	--logo-horizontal-image-black: url("../img/logo/horizontal-black.svg");
-	--logo-vertical-image-black: url("../img/logo/vertical-black.svg");
-	--logo-horizontal-image-white: url("../img/logo/horizontal-white.svg");
-	--logo-vertical-image-white: url("../img/logo/vertical-white.svg");
+	--logo-horizontal-image-black: url("img/logo/horizontal-black.svg");
+	--logo-vertical-image-black: url("img/logo/vertical-black.svg");
+	--logo-horizontal-image-white: url("img/logo/horizontal-white.svg");
+	--logo-vertical-image-white: url("img/logo/vertical-white.svg");
 	--logo-horizontal-image: var(--logo-horizontal-image-black);
 	--logo-vertical-image: var(--logo-vertical-image-black);
 	--logo-position: 50%;

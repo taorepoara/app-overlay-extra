@@ -1,13 +1,23 @@
 {
   "name": "app-overlay-extra",
-  "module": "index.ts",
+  "module": "src/server/index.ts",
   "type": "module",
   "private": true,
   "scripts": {
-    "start": "bun run index.ts"
+    "dev": "concurrently \"bun run server:dev\" \"bun run client:dev\"",
+    "client:dev": "vite",
+    "client:build": "vite build",
+    "client:preview": "vite preview",
+    "server:dev": "bun run src/server/index.ts 3001 --watch src/server",
+    "server:start": "bun run src/server/index.ts",
+    "check": "biome check src"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@biomejs/biome": "^1.9.4",
+    "@types/bun": "latest",
+    "concurrently": "^9.2.1",
+    "pretty-format": "^29.7.0",
+    "vite": "^4.3.2"
   },
   "peerDependencies": {
     "typescript": "^5"
