@@ -6,13 +6,23 @@ To install dependencies:
 bun install
 ```
 
-To run:
+To run in development mode:
 
 ```bash
-bun run index.ts
+bun dev
 ```
 
-This project was created using `bun init` in bun v1.2.4. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.
+To build for production:
+
+```bash
+bun run build
+```
+
+To start a production server:
+
+```bash
+bun start
+```
 
 
 ## Scenes
@@ -23,4 +33,5 @@ Here are the available scenes:
 - `start`: initial scene with no media
 - `camera`: scene with user camera
 - `screen`: scene with screen sharing
-- `camera-screen`: scene with both user camera and screen sharing
+- `camera & screen`: scene with both user camera and screen sharing
+- `end`: final scene with no media

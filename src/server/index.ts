@@ -14,18 +14,45 @@ const server = Bun.serve({
 			}
 			return new Response("Upgrade Required", { status: 426 });
 		}
-		const file = Bun.file(`./dist${url.pathname}`);
-		console.log("Serving file:", file);
+		console.log("Search file for path", url.pathname);
+		let file = Bun.file(`./dist${url.pathname}`);
+		if (!(await file.exists())) {
+			file = Bun.file(`./public${url.pathname}`);
+		}
+		if (!(await file.exists())) {
+			file = Bun.file(`./data${url.pathname}`);
+		}
 		if (await file.exists()) {
+			console.log("Serving file", file);
+			const ext = url.pathname.split(".").pop();
+			let contentType = "application/octet-stream";
+			switch (ext) {
+				case "html":
+					contentType = "text/html";
+					break;
+				case "css":
+					contentType = "text/css";
+					break;
+				case "js":
+					contentType = "application/javascript";
+					break;
+				case "json":
+					contentType = "application/json";
+					break;
+				case "png":
+					contentType = "image/png";
+					break;
+				case "jpg":
+				case "jpeg":
+					contentType = "image/jpeg";
+					break;
+				case "svg":
+					contentType = "image/svg+xml";
+					break;
+			}
 			return new Response(file.stream(), {
 				headers: {
-					"Content-Type": url.pathname.endsWith(".html")
-						? "text/html"
-						: url.pathname.endsWith(".css")
-							? "text/css"
-							: url.pathname.endsWith(".js")
-								? "application/javascript"
-								: "application/octet-stream",
+					"Content-Type": contentType,
 				},
 			});
 		}

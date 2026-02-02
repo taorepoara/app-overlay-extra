@@ -1,4 +1,13 @@
-import { ConnectionManager, type StreamType } from "./ConnectionManager.ts";
+import {
+	AudioManager,
+	SoundTrack,
+	type SoundTrackPart,
+} from "./AudioManager.ts";
+import {
+	ConnectionManager,
+	type Scene,
+	type StreamType,
+} from "./ConnectionManager.ts";
 import "./css/footer.css";
 import "./css/header.css";
 import "./overlay.css";
@@ -70,15 +79,30 @@ alertModal("Overlay connected to server.").then(() => {
 		stream?: MediaStream;
 	}[] = [];
 
-	function setScene(scene: string) {
+	function setScene(scene: Scene) {
 		const main = document.querySelector("main");
 		if (main) {
-			main.dataset.previousScene = main.dataset.scene;
-			main.dataset.scene = scene;
-			(document.getElementById("camera") as HTMLVideoElement).muted =
-				scene === "start";
-			(document.getElementById("screen") as HTMLVideoElement).muted =
-				!scene.includes("screen");
+			sceneChanged =
+				main.dataset.scene !== scene &&
+				[main.dataset.scene as Scene, scene].findIndex(
+					(s) => s === "start" || s === "end",
+				) !== -1;
+			nextScene = scene;
+			setTimeout(
+				() => {
+					if (scene !== nextScene) return;
+					console.log("Audio scene set to: ", scene);
+					main.dataset.previousScene = main.dataset.scene;
+					main.dataset.scene = scene;
+					(document.getElementById("camera") as HTMLVideoElement).muted =
+						scene === "start";
+					(document.getElementById("screen") as HTMLVideoElement).muted =
+						!scene.includes("screen");
+				},
+				nextTransitionDate !== null
+					? nextTransitionDate?.getTime() - Date.now()
+					: 0,
+			);
 			console.log("Scene set to: ", scene);
 		} else {
 			console.error("Main element not found to set scene.");
@@ -146,3 +170,62 @@ alertModal("Overlay connected to server.").then(() => {
 		}
 	}
 });
+
+const audioManager = AudioManager.instance;
+
+// let currentPart: PartName = "bass-base";
+// let nextPart: PartName = currentPart;
+let nextTransitionDate: Date | null = null;
+let sceneChanged = false;
+let nextScene: Scene | null = null;
+const partNames = [
+	"bass-base",
+	"bass-base-2",
+	"bass-chorus",
+	"bass-chorus-end",
+] as const;
+
+export type PartName = (typeof partNames)[number];
+
+async function initBassLoop() {
+	const bassSoundTrack = new SoundTrack(audioManager);
+	bassSoundTrack.gainNode.gain.value = 0.1;
+
+	const base = await bassSoundTrack.addPart("/sound/bass-base.mp3", 2);
+	const base2 = await bassSoundTrack.addPart("/sound/bass-base2.mp3", 2);
+	const chorus = await bassSoundTrack.addPart("/sound/bass-chorus.mp3", 3);
+	const chorusEnd = await bassSoundTrack.addPart("/sound/bass-chorus_end.mp3", 1);
+
+	base.onended = () => {
+		let nextPart: SoundTrackPart;
+		if (sceneChanged) {
+			sceneChanged = false;
+			nextPart = chorus;
+		} else {
+			nextPart = Math.random() < 0.2 ? base2 : base;
+		}
+		nextTransitionDate = nextPart.start();
+	};
+
+	base2.onended = () => {
+		let nextPart: SoundTrackPart;
+		if (sceneChanged) {
+			sceneChanged = false;
+			nextPart = chorus;
+		} else {
+			nextPart = base;
+		}
+		nextTransitionDate = nextPart.start();
+	};
+
+	chorus.onended = () => {
+		nextTransitionDate = chorusEnd.start();
+	};
+
+	chorusEnd.onended = () => {
+		nextTransitionDate = base.start();
+	};
+
+	nextTransitionDate = base.start();
+}
+initBassLoop();
