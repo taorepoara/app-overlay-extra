@@ -19,8 +19,8 @@ const server = Bun.serve({
 		if (!(await file.exists())) {
 			file = Bun.file(`./public${url.pathname}`);
 		}
-		if (!(await file.exists())) {
-			file = Bun.file(`./data${url.pathname}`);
+		if (!(await file.exists()) && url.pathname.startsWith("/data/")) {
+			file = Bun.file(`.${url.pathname}`);
 		}
 		if (await file.exists()) {
 			console.log("Serving file", file);

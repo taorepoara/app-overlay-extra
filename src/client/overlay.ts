@@ -191,10 +191,10 @@ async function initBassLoop() {
 	const bassSoundTrack = new SoundTrack(audioManager);
 	bassSoundTrack.gainNode.gain.value = 0.1;
 
-	const base = await bassSoundTrack.addPart("/sound/bass-base.mp3", 2);
-	const base2 = await bassSoundTrack.addPart("/sound/bass-base2.mp3", 2);
-	const chorus = await bassSoundTrack.addPart("/sound/bass-chorus.mp3", 3);
-	const chorusEnd = await bassSoundTrack.addPart("/sound/bass-chorus_end.mp3", 1);
+	const base = await bassSoundTrack.addPart("/data/sound/bass-base.mp3", 2);
+	const base2 = await bassSoundTrack.addPart("/data/sound/bass-base2.mp3", 2);
+	const chorus = await bassSoundTrack.addPart("/data/sound/bass-chorus.mp3", 3);
+	const chorusEnd = await bassSoundTrack.addPart("/data/sound/bass-chorus_end.mp3", 1);
 
 	base.onended = () => {
 		let nextPart: SoundTrackPart;

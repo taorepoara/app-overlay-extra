@@ -21,6 +21,9 @@ export default defineConfig({
 				target: "ws://localhost:3001",
 				ws: true,
 			},
+			"/data/": {
+				target: "http://localhost:3001"
+			},
 		},
 	},
 });
