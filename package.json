@@ -5,6 +5,8 @@
   "private": true,
   "scripts": {
     "dev": "concurrently \"bun run server:dev\" \"bun run client:dev\"",
+    "build": "bun run client:build",
+    "start": "bun run server:start",
     "client:dev": "vite",
     "client:build": "vite build",
     "client:preview": "vite preview",

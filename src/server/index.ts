@@ -14,6 +14,22 @@ const server = Bun.serve({
 			}
 			return new Response("Upgrade Required", { status: 426 });
 		}
+		const file = Bun.file(`./dist${url.pathname}`);
+		console.log("Serving file:", file);
+		if (await file.exists()) {
+			return new Response(file.stream(), {
+				headers: {
+					"Content-Type": url.pathname.endsWith(".html")
+						? "text/html"
+						: url.pathname.endsWith(".css")
+							? "text/css"
+							: url.pathname.endsWith(".js")
+								? "application/javascript"
+								: "application/octet-stream",
+				},
+			});
+		}
+		return new Response("Not Found", { status: 404 });
 	},
 	websocket: {
 		open(_ws) {

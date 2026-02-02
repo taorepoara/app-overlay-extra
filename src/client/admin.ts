@@ -54,7 +54,7 @@ async function updateMediaDevices() {
 	}
 }
 
-await updateMediaDevices();
+updateMediaDevices();
 
 navigator.mediaDevices.ondevicechange = () => {
 	console.log("Media devices changed, updating device lists...");

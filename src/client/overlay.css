@@ -56,7 +56,7 @@ body {
 	--text-contrast-color-data: var(--background-color-data);
 	--primary-color-disabled: var(--light-primary-color-disabled);
 	--invert-primary-color-disabled: var(--dark-primary-color-disabled);
-	--background-image: url("../img/fond.svg");
+	/* --background-image: url("../img/fond.svg"); */
 	--font-size: 1.25rem;
 	--line-height-multiplier: calc(3 / 2);
 	--line-height: calc(var(--font-size) * var(--line-height-multiplier));
@@ -133,7 +133,7 @@ main {
 		transition-property: opacity;
 	}
 
-	video {
+	> video {
 		position: absolute;
 		aspect-ratio: 16 / 9;
 		width: 0%;
@@ -170,7 +170,7 @@ main {
 		}
 	}
 
-	p.message {
+	> p.message {
 		position: absolute;
 		font-size: 4rem;
 		top: 50%;
