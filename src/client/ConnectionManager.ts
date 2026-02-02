@@ -3,12 +3,13 @@ import type { AppMessage, ClientType, WSMessage } from "../types.ts";
 export * from "../types.ts";
 
 export class ConnectionManager {
-	private type: ClientType;
+	private static instance: ConnectionManager | null = null;
+	private readonly type: ClientType;
 	private webSocket: WebSocket | null = null;
-	private rtcConnection: RTCPeerConnection;
-	private onMessage: MessageCallback;
+	private readonly rtcConnection: RTCPeerConnection;
+	private readonly onMessage: MessageCallback;
 
-	constructor(
+	private constructor(
 		type: ClientType,
 		onMessage: MessageCallback,
 		onTrack?: (ev: RTCTrackEvent) => void,
@@ -209,6 +210,22 @@ export class ConnectionManager {
 		console.log("Created and set local description with offer: ", offer);
 
 		this.sendMessage({ type: "offer", sdp: offer.sdp });
+	}
+
+	static init(
+		type: ClientType,
+		onMessage: MessageCallback,
+		onTrack?: (ev: RTCTrackEvent) => void,
+	): ConnectionManager {
+		if (ConnectionManager.instance) {
+			return ConnectionManager.instance;
+		}
+		ConnectionManager.instance = new ConnectionManager(
+			type,
+			onMessage,
+			onTrack,
+		);
+		return ConnectionManager.instance;
 	}
 }
 

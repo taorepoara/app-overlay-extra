@@ -50,11 +50,13 @@ export type AnswerMessage = {
 	sdp: string;
 };
 
-export type Scene =
-	| "start"
-	| "camera"
-	| "screen"
-	| "camera & screen"
-	| "end";
+export const scenes = [
+	"start",
+	"camera",
+	"screen",
+	"camera & screen",
+	"end",
+] as const;
+export type Scene = (typeof scenes)[number];
 
 export type StreamType = "camera" | "screen";

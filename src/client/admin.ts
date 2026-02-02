@@ -1,5 +1,6 @@
 import {
 	ConnectionManager,
+	scenes,
 	type Scene,
 	type StreamType,
 } from "./ConnectionManager.js";
@@ -9,8 +10,10 @@ console.log("Admin script loaded");
 
 const streams: Map<StreamType, MediaStream> = new Map();
 
+initAdminUI();
+
 // Open websocket connection to server
-const connectionManager = new ConnectionManager("admin", async (message) => {
+const connectionManager = ConnectionManager.init("admin", async (message) => {
 	console.log("Received message in admin: ", message);
 	switch (message.type) {
 		case "setScene":
@@ -51,7 +54,7 @@ async function updateMediaDevices() {
 	}
 }
 
-updateMediaDevices();
+await updateMediaDevices();
 
 navigator.mediaDevices.ondevicechange = () => {
 	console.log("Media devices changed, updating device lists...");
@@ -259,6 +262,13 @@ function initAdminUI() {
 	});
 
 	const sceneSelect = document.getElementById("scene") as HTMLSelectElement;
+	scenes.forEach((scene) => {
+		const option = document.createElement("option");
+		option.value = scene;
+		option.text = scene;
+		sceneSelect.appendChild(option);
+	});
+	sceneSelect.value = scenes[0];
 	sceneSelect.addEventListener("change", () => {
 		setScene(sceneSelect.value as Scene);
 	});
@@ -282,5 +292,3 @@ function initAdminUI() {
 		addDeviceShare();
 	});
 }
-
-initAdminUI();
