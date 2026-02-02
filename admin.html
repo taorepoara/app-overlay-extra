@@ -11,30 +11,40 @@
 <body>
 	<main>
 		<h1>Admin Page</h1>
-		<p>This is the admin page content.</p>
 		<header>
+			<label for="scene">Scene:</label>
 			<select id="scene">
 				<option value="start">Start</option>
 				<option value="camera">Camera</option>
 				<option value="screen">Screen</option>
 				<option value="camera-screen">Camera + Screen</option>
 			</select>
-			<button class="refresh-css">Rafraichir le CSS</button>
-			<button class="refresh">Rafraichir tout</button>
+			<!-- <button class="refresh-css">Rafraichir le CSS</button>
+			<button class="refresh">Rafraichir tout</button> -->
 		</header>
-		<section id="preview">
+		<details id="share" open>
+			<summary>Share content</summary>
 			<dialog id="add-camera">
 				<form method="dialog">
-					<video id="camera" autoplay muted></video>
 					<select id="camera-select"></select>
 					<select id="mic-select"></select>
 					<input type="submit" value="Valider">
 				</form>
+				<video id="camera-selected" autoplay muted></video>
 			</dialog>
-			<button id="open-add-camera">Caméra & micro</button>
-			<video id="screen" autoplay muted></video>
-			<button id="share-screen">Capture d'écran</button>
-		</section>
+			<ul>
+				<li>
+					<h3>Camera</h3>
+					<video id="camera" autoplay muted></video>
+					<button id="open-add-camera">Choose camera & mic</button>
+				</li>
+				<li>
+					<h3>Screen</h3>
+					<video id="screen" autoplay muted></video>
+					<button id="share-screen">Screen share</button>
+				</li>
+			</ul>
+		</details>
 	</main>
 </body>
 

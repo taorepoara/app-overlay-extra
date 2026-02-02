@@ -52,8 +52,9 @@ export type AnswerMessage = {
 
 export type Scene =
 	| "start"
-	| "camera-only"
-	| "screen-only"
-	| "camera-and-screen";
+	| "camera"
+	| "screen"
+	| "camera & screen"
+	| "end";
 
 export type StreamType = "camera" | "screen";

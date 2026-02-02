@@ -1,3 +1,50 @@
+h1 {
+	display: none;
+}
+
 video {
-	max-height: 250px;
+	height: 12.5rem;
+	aspect-ratio: 16 / 9;
+	background-color: black;
+}
+
+#share {
+
+	>summary {
+		font-weight: bold;
+		padding-top: 0.5rem;
+		width: 100%;
+	}
+
+	>ul {
+		display: flex;
+		flex-direction: row;
+		flex-wrap: wrap;
+		justify-content: space-evenly;
+		gap: 1rem;
+		padding: 0;
+
+
+		>li {
+			display: inline-grid;
+			grid-template-areas: "t b"
+				"p p";
+			width: fit-content;
+			justify-self: center;
+
+			>h3 {
+				grid-area: t;
+			}
+
+			>video {
+				grid-area: p;
+			}
+
+			>button {
+				grid-area: b;
+				align-self: center;
+				justify-self: end;
+			}
+		}
+	}
 }

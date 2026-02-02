@@ -1,10 +1,10 @@
-import { argv, type ServerWebSocket } from "bun";
+import { argv } from "bun";
 import { WebSocketManager } from "./WebSocketManager.ts";
 
 const sockerManager = new WebSocketManager();
 
 const server = Bun.serve({
-  port: argv[2] ? Number.parseInt(argv[2]) : 3000,
+	port: argv[2] ? Number.parseInt(argv[2]) : 3000,
 	async fetch(req, server) {
 		const url = new URL(req.url);
 		if (url.pathname === "/ws") {
@@ -26,7 +26,7 @@ const server = Bun.serve({
 			console.log(`WebSocket connection closed: ${code} - ${reason}`);
 			sockerManager.onClose(ws);
 		},
-	}
+	},
 });
 
 console.log(`Listening on ${server.url}`);

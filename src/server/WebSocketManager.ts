@@ -1,10 +1,22 @@
 import type { ServerWebSocket } from "bun";
-import type { Scene, AppMessage, WSMessage } from "../types.ts";
+import type { ClientType, Scene, WSMessage } from "../types.ts";
 
 export class WebSocketManager {
-	private admins: ServerWebSocket<undefined>[] = [];
+	private readonly admins: ServerWebSocket<undefined>[] = [];
 	private overlay: ServerWebSocket<undefined> | null = null;
 	private currentScene: Scene = "start";
+
+	public register(ws: ServerWebSocket<undefined>, type: ClientType): boolean {
+		switch (type) {
+			case "admin":
+				this.registerAdmin(ws);
+				return true;
+			case "overlay":
+				this.registerOverlay(ws);
+				return true;
+		}
+		return false;
+	}
 
 	public registerAdmin(ws: ServerWebSocket<undefined>) {
 		this.admins.push(ws);
@@ -33,18 +45,7 @@ export class WebSocketManager {
 		console.log("Received message:", messageData, typeof messageData);
 		const message = JSON.parse(messageData.toString()) as WSMessage;
 		if (message.type === "connectClient") {
-			let registration = false;
-			switch (message.clientType) {
-				case "admin":
-					this.registerAdmin(ws);
-					registration = true;
-					break;
-				case "overlay":
-					this.registerOverlay(ws);
-					registration = true;
-					break;
-			}
-			if (registration) return;
+			if (this.register(ws, message.clientType)) return;
 		}
 		console.log("Forwarding message", message);
 		if (this.overlay === ws) {
@@ -55,13 +56,12 @@ export class WebSocketManager {
 				}
 			}
 			console.log("Forwarded message to admins");
-		} else if (this.admins.indexOf(ws) !== -1) {
+		} else if (this.admins.includes(ws)) {
 			if (message.type === "setScene") {
 				this.currentScene = message.scene;
 				console.log("Updated current scene to", this.currentScene);
 			}
 			// Forward the message to all overlays
-			this.overlay;
 			if (this.overlay?.readyState === WebSocket.OPEN) {
 				this.overlay?.send(messageData);
 			}

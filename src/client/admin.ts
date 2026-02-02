@@ -67,8 +67,9 @@ async function previewUserCamera() {
 	const micSelect = document.getElementById("mic-select") as HTMLSelectElement;
 	const cameraDeviceId = cameraSelect.value;
 	const micDeviceId = micSelect.value;
-	const type = "camera";
-	const videoElement = document.getElementById(type) as HTMLVideoElement;
+	const videoElement = document.getElementById(
+		"camera-selected",
+	) as HTMLVideoElement;
 	videoElement.srcObject = null;
 
 	const userMediaOptions: MediaStreamConstraints = {};
