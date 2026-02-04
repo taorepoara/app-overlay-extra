@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-local_hostname=$(hostname -I | cut -d " " -f 1)
+local_hostname=${HOST:-$(hostname -I | cut -d " " -f 1)}
 
 echo "Generating env files for hostname: $local_hostname"
 

@@ -189,7 +189,7 @@ export type PartName = (typeof partNames)[number];
 
 async function initBassLoop() {
 	const bassSoundTrack = new SoundTrack(audioManager);
-	bassSoundTrack.gainNode.gain.value = 0.1;
+	bassSoundTrack.gainNode.gain.value = 0.2;
 
 	const base = await bassSoundTrack.addPart("/data/sound/bass-base.mp3", 2);
 	const base2 = await bassSoundTrack.addPart("/data/sound/bass-base2.mp3", 2);

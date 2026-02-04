@@ -7,24 +7,28 @@ const server = Bun.serve({
 	port: argv[2] ? Number.parseInt(argv[2]) : 3000,
 	async fetch(req, server) {
 		const url = new URL(req.url);
-		if (url.pathname === "/ws") {
+		let path = url.pathname;
+		if (path === "/ws") {
 			const upgraded = server.upgrade(req);
 			if (upgraded) {
 				// return;
 			}
 			return new Response("Upgrade Required", { status: 426 });
 		}
-		console.log("Search file for path", url.pathname);
-		let file = Bun.file(`./dist${url.pathname}`);
-		if (!(await file.exists())) {
-			file = Bun.file(`./public${url.pathname}`);
+		if (path === "/" || path === "") {
+			path = "/index.html";
 		}
-		if (!(await file.exists()) && url.pathname.startsWith("/data/")) {
-			file = Bun.file(`.${url.pathname}`);
+		console.log("Search file for path", path);
+		let file = Bun.file(`./dist${path}`);
+		if (!(await file.exists())) {
+			file = Bun.file(`./public${path}`);
+		}
+		if (!(await file.exists()) && path.startsWith("/data/")) {
+			file = Bun.file(`.${path}`);
 		}
 		if (await file.exists()) {
 			console.log("Serving file", file);
-			const ext = url.pathname.split(".").pop();
+			const ext = path.split(".").pop();
 			let contentType = "application/octet-stream";
 			switch (ext) {
 				case "html":

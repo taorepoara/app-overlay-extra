@@ -10,7 +10,28 @@ console.log("Admin script loaded");
 
 const streams: Map<StreamType, MediaStream> = new Map();
 
-initAdminUI();
+const permissions = [
+	"microphone",
+	"camera",
+	"captured-surface-control",
+	"display-capture",
+];
+permissions
+	.reduce(
+		(previousPromise, permission) =>
+			previousPromise.then((result) => {
+				console.log(`Requesting permission for: ${permission}`);
+				return navigator.permissions
+					.query({ name: permission as PermissionName })
+					.then((status) => {
+						console.log(`Permission for ${permission}: ${status.state}`);
+						return result && status.state === "granted";
+					});
+			}),
+		Promise.resolve(true),
+	)
+	.then((_allGranted) => updateMediaDevices())
+	.then(() => initAdminUI());
 
 // Open websocket connection to server
 const connectionManager = ConnectionManager.init("admin", async (message) => {
@@ -53,8 +74,6 @@ async function updateMediaDevices() {
 		micSelect.appendChild(option);
 	}
 }
-
-updateMediaDevices();
 
 navigator.mediaDevices.ondevicechange = () => {
 	console.log("Media devices changed, updating device lists...");
@@ -99,7 +118,7 @@ async function previewUserCamera() {
 	}
 }
 
-async function addUserCamera() {
+async function addUserCamera(selected = true) {
 	console.log("Initializing user camera and mic...");
 
 	const cameraSelect = document.getElementById(
@@ -114,17 +133,28 @@ async function addUserCamera() {
 	videoElement.srcObject = null;
 
 	const userMediaOptions: MediaStreamConstraints = {};
-	if (cameraDeviceId) {
+	if (selected) {
+		if (cameraDeviceId) {
+			userMediaOptions.video = {
+				deviceId: { exact: cameraDeviceId },
+				width: { max: 1920, ideal: 1920 },
+				aspectRatio: { exact: 16 / 9 },
+				// backgroundBlur: true,
+			};
+		}
+		if (micDeviceId) {
+			userMediaOptions.audio = {
+				deviceId: { exact: micDeviceId },
+				noiseSuppression: true,
+			};
+		}
+	} else {
 		userMediaOptions.video = {
-			deviceId: { exact: cameraDeviceId },
 			width: { max: 1920, ideal: 1920 },
 			aspectRatio: { exact: 16 / 9 },
 			// backgroundBlur: true,
 		};
-	}
-	if (micDeviceId) {
 		userMediaOptions.audio = {
-			deviceId: { exact: micDeviceId },
 			noiseSuppression: true,
 		};
 	}
@@ -227,7 +257,7 @@ function setScene(scene: Scene) {
 // 	}
 // }
 
-function initAdminUI() {
+async function initAdminUI() {
 	// const refreshCssButtons = document.getElementsByClassName("refresh-css");
 	// for (let i = 0; i < refreshCssButtons.length; i++) {
 	// 	const button = refreshCssButtons[i];
@@ -252,7 +282,8 @@ function initAdminUI() {
 	) as HTMLButtonElement;
 
 	openAddCameraButton.addEventListener("click", () => {
-		addCameraDialog.showModal();
+		// addCameraDialog.showModal();
+		addUserCamera(false);
 	});
 
 	addCameraDialog.addEventListener("close", () => {
