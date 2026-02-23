@@ -1,7 +1,20 @@
+import type { StreamType } from "../types.ts";
+
+type TrackName = "music" | StreamType;
+
 export class AudioManager {
 	public static readonly instance: AudioManager = new AudioManager();
 	public readonly audioContext: AudioContext = new AudioContext();
-	// private readonly tracks: Track[] = [];
+	public readonly tracks: { [key: string]: SoundTrack } = {};
+
+	addTrack(name: TrackName, track: SoundTrack) {
+		if (this.tracks[name]) {
+			console.warn(
+				`Track with name ${name} already exists. It will be replaced.`,
+			);
+		}
+		this.tracks[name] = track;
+	}
 
 	async loadSound(url: string): Promise<AudioBuffer> {
 		const response = await fetch(url);
@@ -50,78 +63,206 @@ export class AudioManager {
 		source.buffer = audioBuffer;
 		return source;
 	}
+
+	setTrackGain(name: TrackName, gain: number) {
+		const track = this.tracks[name];
+		if (!track) {
+			console.warn(`Track with name ${name} not found.`);
+			return;
+		}
+		const start = track.gainNode.gain.value;
+		const diff = gain - start;
+		const duration = 0.3;
+		track.gainNode.gain.setValueCurveAtTime(
+			[
+				start,
+				start + (diff * 10) / 100,
+				start + (diff * 50) / 100,
+				start + (diff * 90) / 100,
+				gain,
+			],
+			this.audioContext.currentTime,
+			duration,
+		);
+	}
 }
 
-export class SoundTrack {
-	readonly manager: AudioManager;
-	private readonly parts: SoundTrackPart[] = [];
+abstract class SoundTrack {
 	public readonly gainNode: GainNode;
+	constructor(name: TrackName) {
+		AudioManager.instance.addTrack(name, this);
+		this.gainNode = AudioManager.instance.audioContext.createGain();
+		this.gainNode.connect(AudioManager.instance.audioContext.destination);
+	}
+}
+
+export class AudioStreamTrack extends SoundTrack {
+	constructor(name: StreamType, stream: MediaStream) {
+		super(name);
+		const source =
+			AudioManager.instance.audioContext.createMediaStreamSource(stream);
+		source.connect(this.gainNode);
+	}
+}
+
+export class Music extends SoundTrack {
+	readonly tracks: MusicTrack[] = [];
+
+	constructor() {
+		super("music");
+	}
+}
+
+export class MusicTrack {
+	public readonly gainNode: GainNode;
+	private readonly parts: MusicTrackPart[] = [];
 	public nextStartTime = 0;
-	constructor(manager: AudioManager) {
-		this.manager = manager;
-		this.gainNode = this.manager.audioContext.createGain();
-		this.gainNode.connect(this.manager.audioContext.destination);
+
+	constructor(readonly music: Music) {
+		this.music.tracks.push(this);
+		this.gainNode = AudioManager.instance.audioContext.createGain();
+		this.gainNode.connect(music.gainNode);
 	}
 
-	async addPart(url: string, repeat: number): Promise<SoundTrackPart> {
-		const buffer = await this.manager.loadSound(url);
-		const part = new SoundTrackPart(this, buffer, repeat);
+	async addPart(
+		url: string,
+		repeat: number,
+		offset?: number,
+		duration?: number,
+	): Promise<MusicTrackPart> {
+		const buffer = await AudioManager.instance.loadSound(url);
+		const part = new MusicTrackPart(this, buffer, repeat, offset, duration);
 		this.parts.push(part);
 		return part;
 	}
 }
 
-export class SoundTrackPart {
-	private readonly track: SoundTrack;
+export interface IMusicTrackPart {
+	playing: boolean;
+	duration: number;
+	start(): Date;
+	onended: (() => void) | null;
+}
+
+export class MusicTrackPart implements IMusicTrackPart {
+	private readonly track: MusicTrack;
 	public readonly buffer: AudioBuffer;
 	public readonly repeat: number;
+	public readonly offset?: number;
+	private readonly _duration?: number;
 	public onended: (() => void) | null = null;
 	private _playing = false;
 	private source: AudioBufferSourceNode | null = null;
 
-	constructor(track: SoundTrack, buffer: AudioBuffer, repeat: number) {
+	constructor(
+		track: MusicTrack,
+		buffer: AudioBuffer,
+		repeat: number,
+		offset?: number,
+		duration?: number,
+	) {
 		this.track = track;
 		this.buffer = buffer;
 		this.repeat = repeat;
+		this.offset = offset;
+		this._duration = duration;
 	}
 
-	get playing() {
+	get playing(): boolean {
 		return this._playing;
+	}
+
+	get duration(): number {
+		return (this._duration ?? this.buffer.duration) * this.repeat;
 	}
 
 	start(): Date {
 		if (this._playing) throw new Error("SoundTrackPart is already playing");
 		this._playing = true;
 		const startTime = this.track.nextStartTime;
-		const diff = (startTime - this.track.manager.audioContext.currentTime) * 1000;
+		const diff =
+			(startTime - AudioManager.instance.audioContext.currentTime) * 1000;
 		const endDate = new Date(
 			Date.now() + diff + this.buffer.duration * 1000 * this.repeat,
 		);
 		if (this.source == null) {
 			console.debug("SoundTrackPart play", this);
-			this.source = this.track.manager.createBufferSource(this.buffer);
+			this.source = AudioManager.instance.createBufferSource(this.buffer);
 			this.source.loop = true;
+			if (this.offset !== undefined) {
+				this.source.loopStart = this.offset;
+			}
+			if (this.duration !== undefined) {
+				this.source.loopEnd = (this.offset ?? 0) + this.duration;
+			}
 			this.source.connect(this.track.gainNode);
-			this.source.start(startTime);
+			this.source.start(startTime, this.offset);
 		} else {
 			console.debug("SoundTrackPart continue", this);
 			this.source.loop = true;
 		}
 		this.track.nextStartTime = startTime + this.buffer.duration * this.repeat;
 
-		setTimeout(() => {
-			console.debug("SoundTrackPart ended", this);
-			this._playing = false;
-			if (this.source != null) {
-				this.source.loop = false;
-			}
-			this.onended?.();
-			if (!this._playing) {
-				console.debug("SoundTrackPart stop", this);
-				this.source?.disconnect();
-				this.source = null;
-			}
-		}, endDate.getTime() - Date.now() - 10);
+		setTimeout(
+			() => {
+				console.debug("SoundTrackPart ended", this);
+				this._playing = false;
+				if (this.source != null) {
+					this.source.loop = false;
+					// if (this.duration !== undefined) {
+					// 	this.source.stop(startTime + this.duration);
+					// }
+				}
+				this.onended?.();
+				if (!this._playing) {
+					console.debug("SoundTrackPart stop", this);
+					this.source?.disconnect();
+					this.source = null;
+				}
+			},
+			endDate.getTime() - Date.now() - 10,
+		);
 		return endDate;
+	}
+}
+
+export class MusicPartGroup implements IMusicTrackPart {
+	private currentPartIndex = -1;
+	public onended: (() => void) | null = null;
+
+	constructor(readonly parts: MusicTrackPart[]) {}
+
+	get playing(): boolean {
+		return this.parts.some((part) => part.playing);
+	}
+	get duration(): number {
+		return this.parts.reduce((sum, part) => sum + part.duration, 0);
+	}
+	start(): Date {
+		if (this.currentPartIndex >= 0)
+			throw new Error("MusicPartGroup is already playing");
+		this.currentPartIndex = 0;
+		const firstPartEnd = this.playNextPart().getTime();
+		const endDate = new Date(
+			this.parts
+				.slice(1)
+				.reduce((sum, part) => sum + part.duration, firstPartEnd),
+		);
+
+		return endDate;
+	}
+
+	private playNextPart(): Date {
+		const nextPart = this.parts[this.currentPartIndex];
+		nextPart.onended = () => {
+			this.currentPartIndex++;
+			if (this.currentPartIndex < this.parts.length) {
+				this.playNextPart();
+			} else {
+				this.currentPartIndex = -1;
+				this.onended?.();
+			}
+		};
+		return nextPart.start();
 	}
 }

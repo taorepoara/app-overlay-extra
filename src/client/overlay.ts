@@ -1,7 +1,10 @@
 import {
 	AudioManager,
-	SoundTrack,
-	type SoundTrackPart,
+	AudioStreamTrack,
+	type IMusicTrackPart,
+	Music,
+	MusicPartGroup,
+	MusicTrack,
 } from "./AudioManager.ts";
 import {
 	ConnectionManager,
@@ -13,6 +16,7 @@ import "./css/header.css";
 import "./overlay.css";
 
 console.log("Admin script loaded");
+const offScenes = ["start", "end"] as Scene[];
 
 function alertModal(message: string): Promise<void> {
 	return new Promise((resolve) => {
@@ -34,6 +38,7 @@ function alertModal(message: string): Promise<void> {
 }
 
 alertModal("Overlay connected to server.").then(() => {
+	initBassLoop();
 	// Open websocket connection to server
 	ConnectionManager.init(
 		"overlay",
@@ -73,40 +78,22 @@ alertModal("Overlay connected to server.").then(() => {
 
 	const streams = {};
 	const tracks: { [key: string]: MediaStreamTrack } = {};
-	const sources: {
-		type: "camera" | "screen";
-		trackIds: string[];
-		stream?: MediaStream;
-	}[] = [];
+	const sources: Source[] = [];
 
 	function setScene(scene: Scene) {
 		const main = document.querySelector("main");
-		if (main) {
-			sceneChanged =
-				main.dataset.scene !== scene &&
-				[main.dataset.scene as Scene, scene].findIndex(
-					(s) => s === "start" || s === "end",
-				) !== -1;
-			nextScene = scene;
-			setTimeout(
-				() => {
-					if (scene !== nextScene) return;
-					console.log("Audio scene set to: ", scene);
-					main.dataset.previousScene = main.dataset.scene;
-					main.dataset.scene = scene;
-					(document.getElementById("camera") as HTMLVideoElement).muted =
-						scene === "start";
-					(document.getElementById("screen") as HTMLVideoElement).muted =
-						!scene.includes("screen");
-				},
-				nextTransitionDate !== null
-					? nextTransitionDate?.getTime() - Date.now()
-					: 0,
-			);
-			console.log("Scene set to: ", scene);
-		} else {
+		if (!main) {
 			console.error("Main element not found to set scene.");
+			return;
 		}
+		if (main.dataset.scene === undefined) applyScene(scene);
+		if (main.dataset.scene === scene) return;
+		const fromOffScene = offScenes.includes(main.dataset.scene as Scene);
+		const toOffScene = offScenes.includes(scene);
+		goToTransition =
+			main.dataset.scene !== "transition" && fromOffScene !== toOffScene;
+		nextScene = scene;
+		console.log("Scene set to: ", scene);
 	}
 
 	// function refreshCss() {
@@ -147,11 +134,13 @@ alertModal("Overlay connected to server.").then(() => {
 			);
 			return;
 		}
-		const stream = new MediaStream(tracksToAdd);
+		const stream = new MediaStream([]);
 		tracksToAdd.forEach((track) => {
 			console.log(`Adding track to source stream (${type}): `, track);
 			stream.addTrack(track);
 		});
+		const audioTrack = new AudioStreamTrack(type, stream);
+		console.log(`Adding audio track to source stream (${type}): `, audioTrack);
 		source.stream = stream;
 		const videoElement = document.getElementById(type);
 		if (videoElement) {
@@ -165,6 +154,8 @@ alertModal("Overlay connected to server.").then(() => {
 				console.error("Erreur lors de la lecture de la vidéo :", e);
 			};
 			video.srcObject = stream;
+			video.muted = true;
+			applyScene();
 		} else {
 			console.error(`Video element for ${type} source not found.`);
 		}
@@ -175,9 +166,11 @@ const audioManager = AudioManager.instance;
 
 // let currentPart: PartName = "bass-base";
 // let nextPart: PartName = currentPart;
-let nextTransitionDate: Date | null = null;
-let sceneChanged = false;
+let goToTransition = false;
 let nextScene: Scene | null = null;
+const chorusStartMargin = 0.173349057; // am(Ardour mesure)=1920; start=1773; bpm=106; val=((am−start)÷am) * 4 * (60 / bpm)
+const chorusEndMargin = 0.009433962; // am(Ardour mesure)=1920; start=8; bpm=106; val=(start÷am) * 4 * (60 / bpm)
+const chorusDuration = (2 * 4 * 60) / 106; // deux mesures de 4 temps
 const partNames = [
 	"bass-base",
 	"bass-base-2",
@@ -188,44 +181,75 @@ const partNames = [
 export type PartName = (typeof partNames)[number];
 
 async function initBassLoop() {
-	const bassSoundTrack = new SoundTrack(audioManager);
-	bassSoundTrack.gainNode.gain.value = 0.2;
+	const music = new Music();
+	const bassSoundTrack = new MusicTrack(music);
 
 	const base = await bassSoundTrack.addPart("/data/sound/bass-base.mp3", 2);
 	const base2 = await bassSoundTrack.addPart("/data/sound/bass-base2.mp3", 2);
-	const chorus = await bassSoundTrack.addPart("/data/sound/bass-chorus.mp3", 3);
-	const chorusEnd = await bassSoundTrack.addPart("/data/sound/bass-chorus_end.mp3", 1);
+	const chorus = new MusicPartGroup([
+		await bassSoundTrack.addPart("/data/sound/bass-chorus.wav", 3),
+		await bassSoundTrack.addPart("/data/sound/bass-chorus_end.mp3", 1),
+	]);
 
 	base.onended = () => {
-		let nextPart: SoundTrackPart;
-		if (sceneChanged) {
-			sceneChanged = false;
+		let nextPart: IMusicTrackPart;
+		if (goToTransition) {
+			goToTransition = false;
+			applyScene("transition");
 			nextPart = chorus;
 		} else {
+			applyNextSceneIfNeeded();
 			nextPart = Math.random() < 0.2 ? base2 : base;
 		}
-		nextTransitionDate = nextPart.start();
+		nextPart.start();
 	};
 
 	base2.onended = () => {
-		let nextPart: SoundTrackPart;
-		if (sceneChanged) {
-			sceneChanged = false;
+		let nextPart: IMusicTrackPart;
+		if (goToTransition) {
+			goToTransition = false;
+			applyScene("transition");
 			nextPart = chorus;
 		} else {
+			applyNextSceneIfNeeded();
 			nextPart = base;
 		}
-		nextTransitionDate = nextPart.start();
+		nextPart.start();
 	};
 
 	chorus.onended = () => {
-		nextTransitionDate = chorusEnd.start();
+		applyNextSceneIfNeeded();
+		base.start();
 	};
 
-	chorusEnd.onended = () => {
-		nextTransitionDate = base.start();
-	};
-
-	nextTransitionDate = base.start();
+	base.start();
 }
-initBassLoop();
+
+function applyNextSceneIfNeeded() {
+	const main = document.querySelector("main");
+	if (!main) {
+		console.error("Main element not found to set scene.");
+		return;
+	}
+	const currentScene = main.dataset.scene as Scene;
+	if (nextScene && currentScene !== nextScene) {
+		applyScene(nextScene);
+		nextScene = null;
+	}
+}
+
+function applyScene(expectedScene?: Scene) {
+	const main = document.querySelector("main");
+	if (!main) {
+		console.error("Main element not found to set scene.");
+		return;
+	}
+	const scene = expectedScene ?? (main.dataset.scene as Scene);
+	console.log("Scene set to: ", scene);
+	const musicOnly = scene === "transition" || offScenes.includes(scene);
+	main.dataset.previousScene = main.dataset.scene;
+	main.dataset.scene = scene;
+	audioManager.setTrackGain("camera", musicOnly ? 0 : 1);
+	audioManager.setTrackGain("screen", scene.includes("screen") ? 1 : 0);
+	audioManager.setTrackGain("music", musicOnly ? 1 : 0.2);
+}

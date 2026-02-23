@@ -21,12 +21,14 @@ export type SetSceneMessage = {
 	scene: Scene;
 };
 
+export type StreamSource = {
+	type: StreamType;
+	trackIds: string[];
+};
+
 export type NewSourceMessage = {
 	type: "newSource";
-	source: {
-		type: StreamType;
-		trackIds: string[];
-	};
+	source: StreamSource;
 };
 
 export type RTCConnectionMessage =
@@ -52,6 +54,7 @@ export type AnswerMessage = {
 
 export const scenes = [
 	"start",
+	"transition",
 	"camera",
 	"screen",
 	"camera & screen",

@@ -1,8 +1,8 @@
 import type { ServerWebSocket } from "bun";
-import type { ClientType, Scene, WSMessage } from "../types.ts";
+import type { ClientType, Scene, StreamSource, WSMessage } from "../types.ts";
 
 export class WebSocketManager {
-	private readonly admins: ServerWebSocket<undefined>[] = [];
+	private readonly admins: AdminClient[] = [];
 	private overlay: ServerWebSocket<undefined> | null = null;
 	private currentScene: Scene = "start";
 
@@ -19,7 +19,7 @@ export class WebSocketManager {
 	}
 
 	public registerAdmin(ws: ServerWebSocket<undefined>) {
-		this.admins.push(ws);
+		this.admins.push(new AdminClient(ws));
 		ws.send(JSON.stringify({ type: "setScene", scene: this.currentScene }));
 	}
 
@@ -32,9 +32,14 @@ export class WebSocketManager {
 			return;
 		}
 		this.overlay = ws;
+		this.admins
+			.flatMap((admin) => admin.sources)
+			.forEach((source) => {
+				ws.send(JSON.stringify({ type: "newSource", source }));
+			});
 		ws.send(JSON.stringify({ type: "setScene", scene: this.currentScene }));
 		for (const admin of this.admins) {
-			admin.send(JSON.stringify({ type: "newOverlay" }));
+			admin.socket.send(JSON.stringify({ type: "newOverlay" }));
 		}
 	}
 
@@ -48,18 +53,30 @@ export class WebSocketManager {
 			if (this.register(ws, message.clientType)) return;
 		}
 		console.log("Forwarding message", message);
+		const adminIndex = this.adminIndex(ws);
 		if (this.overlay === ws) {
 			// Forward the message to all admins
 			for (const admin of this.admins) {
-				if (admin.readyState === WebSocket.OPEN) {
-					admin.send(messageData);
+				if (admin.socket.readyState === WebSocket.OPEN) {
+					admin.socket.send(messageData);
 				}
 			}
 			console.log("Forwarded message to admins");
-		} else if (this.admins.includes(ws)) {
-			if (message.type === "setScene") {
-				this.currentScene = message.scene;
-				console.log("Updated current scene to", this.currentScene);
+		} else if (adminIndex >= 0) {
+			const admin = this.admins[adminIndex];
+			switch (message.type) {
+				case "setScene":
+					this.currentScene = message.scene;
+					console.log("Updated current scene to", this.currentScene);
+					break;
+				case "newSource":
+					console.log(
+						"Received new source from admin",
+						admin.socket,
+						message.source,
+					);
+					admin.sources.push(message.source);
+					break;
 			}
 			// Forward the message to all overlays
 			if (this.overlay?.readyState === WebSocket.OPEN) {
@@ -76,11 +93,23 @@ export class WebSocketManager {
 			this.overlay = null;
 			return;
 		}
-		const pos = this.admins.indexOf(ws);
+		const pos = this.adminIndex(ws);
 		if (pos === -1) {
 			console.warn("WebSocket not found in admins list on close.");
 			return;
 		}
 		this.admins.splice(pos, 1);
+	}
+
+	adminIndex(ws: ServerWebSocket<undefined>) {
+		return this.admins.findIndex((admin) => admin.socket === ws);
+	}
+}
+
+class AdminClient {
+	public readonly socket: ServerWebSocket<undefined>;
+	public readonly sources: StreamSource[] = [];
+	constructor(socket: ServerWebSocket<undefined>) {
+		this.socket = socket;
 	}
 }

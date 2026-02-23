@@ -127,6 +127,11 @@ main {
 	overflow: hidden;
 	background-color: var(--black);
 	z-index: 1;
+	transition-property: background-color;
+
+	&[data-scene="transition"] {
+		background-color: red;
+	}
 
 	& * {
 		opacity: 0;
