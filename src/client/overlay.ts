@@ -139,8 +139,13 @@ alertModal("Overlay connected to server.").then(() => {
 			console.log(`Adding track to source stream (${type}): `, track);
 			stream.addTrack(track);
 		});
-		const audioTrack = new AudioStreamTrack(type, stream);
-		console.log(`Adding audio track to source stream (${type}): `, audioTrack);
+		if (stream.getTracks().some((t) => t.kind === "audio")) {
+			const audioTrack = new AudioStreamTrack(type, stream);
+			console.log(
+				`Adding audio track to source stream (${type}): `,
+				audioTrack,
+			);
+		}
 		source.stream = stream;
 		const videoElement = document.getElementById(type);
 		if (videoElement) {
