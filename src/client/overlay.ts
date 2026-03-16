@@ -38,7 +38,9 @@ function alertModal(message: string): Promise<void> {
 }
 
 alertModal("Overlay connected to server.").then(() => {
-	initBassLoop();
+	initBassLoop().catch((e) => {
+		console.error("Error initializing bass loop: ", e, e.stack);
+	});
 	// Open websocket connection to server
 	ConnectionManager.init(
 		"overlay",
@@ -188,46 +190,55 @@ export type PartName = (typeof partNames)[number];
 async function initBassLoop() {
 	const music = new Music();
 	const bassSoundTrack = new MusicTrack(music);
+	const guitarSoundTrack = new MusicTrack(music);
 
-	const base = await bassSoundTrack.addPart("/data/sound/bass-base.mp3", 2);
-	const base2 = await bassSoundTrack.addPart("/data/sound/bass-base2.mp3", 2);
-	const chorus = new MusicPartGroup([
-		await bassSoundTrack.addPart("/data/sound/bass-chorus.wav", 3),
-		await bassSoundTrack.addPart("/data/sound/bass-chorus_end.mp3", 1),
+	const bassBase = await bassSoundTrack.addPart("/data/sound/bass-couplet.mp3", 2);
+	// const base = await bassSoundTrack.addPart("/data/sound/bass-refrain.mp3", 2);
+	// const base2 = await bassSoundTrack.addPart("/data/sound/bass-base2.mp3", 2);
+	const bassChorus = new MusicPartGroup([
+		await bassSoundTrack.addPart("/data/sound/bass-refrain.mp3", 3),
+		await bassSoundTrack.addPart("/data/sound/bass-refrain-fin.mp3", 1),
+	]);
+	// const guitareNotif = await guitarSoundTrack.addPart("/data/sound/guitare-notif.mp3", 1);
+	const guitareChorus = new MusicPartGroup([
+		await guitarSoundTrack.addPart("/data/sound/guitare-refrain.mp3", 3),
+		await guitarSoundTrack.addPart("/data/sound/guitare-refrain-fin.mp3", 1),
 	]);
 
-	base.onended = () => {
+	bassBase.onended = () => {
 		let nextPart: IMusicTrackPart;
 		if (goToTransition) {
 			goToTransition = false;
 			applyScene("transition");
-			nextPart = chorus;
+			nextPart = bassChorus;
+			// guitareChorus.start();
 		} else {
 			applyNextSceneIfNeeded();
-			nextPart = Math.random() < 0.2 ? base2 : base;
+			// nextPart = Math.random() < 0.2 ? base2 : base;
+			nextPart = bassBase;
 		}
 		nextPart.start();
 	};
 
-	base2.onended = () => {
-		let nextPart: IMusicTrackPart;
-		if (goToTransition) {
-			goToTransition = false;
-			applyScene("transition");
-			nextPart = chorus;
-		} else {
-			applyNextSceneIfNeeded();
-			nextPart = base;
-		}
-		nextPart.start();
-	};
+	// base2.onended = () => {
+	// 	let nextPart: IMusicTrackPart;
+	// 	if (goToTransition) {
+	// 		goToTransition = false;
+	// 		applyScene("transition");
+	// 		nextPart = chorus;
+	// 	} else {
+	// 		applyNextSceneIfNeeded();
+	// 		nextPart = base;
+	// 	}
+	// 	nextPart.start();
+	// };
 
-	chorus.onended = () => {
+	bassChorus.onended = () => {
 		applyNextSceneIfNeeded();
-		base.start();
+		bassBase.start();
 	};
 
-	base.start();
+	bassBase.start();
 }
 
 function applyNextSceneIfNeeded() {
