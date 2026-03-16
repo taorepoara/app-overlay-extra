@@ -129,9 +129,9 @@ main {
 	z-index: 1;
 	transition-property: background-color;
 
-	&[data-scene="transition"] {
+	/* &[data-scene="transition"] {
 		background-color: red;
-	}
+	} */
 
 	& * {
 		opacity: 0;
