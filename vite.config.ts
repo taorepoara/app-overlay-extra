@@ -24,6 +24,9 @@ export default defineConfig({
 			"/data/": {
 				target: "http://localhost:3001"
 			},
+			"/redirect": {
+				target: "http://localhost:3001"
+			}
 		},
 	},
 });

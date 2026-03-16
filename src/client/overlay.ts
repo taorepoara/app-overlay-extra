@@ -6,6 +6,7 @@ import {
 	MusicPartGroup,
 	MusicTrack,
 } from "./AudioManager.ts";
+import { alertModal } from "./common.ts";
 import {
 	ConnectionManager,
 	type Scene,
@@ -17,25 +18,6 @@ import "./overlay.css";
 
 console.log("Admin script loaded");
 const offScenes = ["start", "end"] as Scene[];
-
-function alertModal(message: string): Promise<void> {
-	return new Promise((resolve) => {
-		const modal = document.createElement("dialog");
-		const modalMessage = document.createElement("p");
-		const closeButton = document.createElement("button");
-		closeButton.textContent = "Close";
-		modalMessage.textContent = message;
-		closeButton.addEventListener("click", () => {
-			modal.close();
-			modal.remove();
-			resolve();
-		});
-		modal.appendChild(modalMessage);
-		modal.appendChild(closeButton);
-		document.body.appendChild(modal);
-		modal.showModal();
-	});
-}
 
 alertModal("Overlay connected to server.").then(() => {
 	initBassLoop().catch((e) => {
@@ -60,6 +42,21 @@ alertModal("Overlay connected to server.").then(() => {
 				// case "refresh-css":
 				// 	refreshCss();
 				// 	break;
+				case "followerNumber": {
+					const followerCountElement = document.getElementById("followerCount");
+					if (followerCountElement) {
+						followerCountElement.textContent = message.count.toString();
+					}
+					break;
+				}
+				case "subscriptionNumber": {
+					const subscriberCountElement =
+						document.getElementById("subscriberCount");
+					if (subscriberCountElement) {
+						subscriberCountElement.textContent = message.count.toString();
+					}
+					break;
+				}
 				default:
 					console.warn("Unknown message type received", message);
 			}
@@ -192,7 +189,10 @@ async function initBassLoop() {
 	const bassSoundTrack = new MusicTrack(music);
 	const guitarSoundTrack = new MusicTrack(music);
 
-	const bassBase = await bassSoundTrack.addPart("/data/sound/bass-couplet.mp3", 2);
+	const bassBase = await bassSoundTrack.addPart(
+		"/data/sound/bass-couplet.mp3",
+		2,
+	);
 	// const base = await bassSoundTrack.addPart("/data/sound/bass-refrain.mp3", 2);
 	// const base2 = await bassSoundTrack.addPart("/data/sound/bass-base2.mp3", 2);
 	const bassChorus = new MusicPartGroup([

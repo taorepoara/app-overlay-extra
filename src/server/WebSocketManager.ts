@@ -1,10 +1,43 @@
 import type { ServerWebSocket } from "bun";
-import type { ClientType, Scene, StreamSource, WSMessage } from "../types.ts";
+import type {
+	ClientType,
+	Scene,
+	StreamSource,
+	TwitchEvent,
+	WSMessage,
+} from "../types.ts";
+import type { TwitchClient } from "./TwitchClient.ts";
+import type { ChatMessage } from "@twurple/chat";
 
 export class WebSocketManager {
 	private readonly admins: AdminClient[] = [];
-	private overlay: ServerWebSocket<undefined> | null = null;
+	private overlay: WsClient | null = null;
 	private currentScene: Scene = "start";
+	private readonly pendingEvents: TwitchEvent[] = [];
+
+	constructor(private readonly twitchClient: TwitchClient) {
+		twitchClient.onChatMessage = (message: ChatMessage) => {
+			console.log(
+				"Received Twitch chat message in WebSocketManager: ",
+				message.text,
+			);
+			// TODO: First user message: message.isFirst
+			this.onTwitchEvent({
+				type: "chatMessage",
+				// username: message.userInfo.displayName,
+				// message: message.text,
+			});
+		};
+		twitchClient.onChannelEvent = this.onTwitchEvent.bind(this);
+	}
+
+	private onTwitchEvent(event: TwitchEvent) {
+		if (this.overlay?.isOpen) {
+			this.overlay.send(event);
+		} else {
+			this.pendingEvents.push(event);
+		}
+	}
 
 	public register(ws: ServerWebSocket<undefined>, type: ClientType): boolean {
 		switch (type) {
@@ -19,8 +52,15 @@ export class WebSocketManager {
 	}
 
 	public registerAdmin(ws: ServerWebSocket<undefined>) {
-		this.admins.push(new AdminClient(ws));
-		ws.send(JSON.stringify({ type: "setScene", scene: this.currentScene }));
+		const client = new AdminClient(ws);
+		this.admins.push(client);
+		client.send({ type: "setScene", scene: this.currentScene });
+		if (this.twitchClient.needsAuth) {
+			client.send({
+				type: "twitchAuthRequired",
+				params: this.twitchClient.createAuthUrlParameters(),
+			});
+		}
 	}
 
 	public registerOverlay(ws: ServerWebSocket<undefined>) {
@@ -31,15 +71,25 @@ export class WebSocketManager {
 			ws.close(1000, "An overlay is already connected.");
 			return;
 		}
-		this.overlay = ws;
+		this.overlay = new WsClient(ws);
 		this.admins
 			.flatMap((admin) => admin.sources)
 			.forEach((source) => {
-				ws.send(JSON.stringify({ type: "newSource", source }));
+				this.overlay?.send({ type: "newSource", source });
 			});
-		ws.send(JSON.stringify({ type: "setScene", scene: this.currentScene }));
+		this.overlay.send({ type: "setScene", scene: this.currentScene });
+		while (this.pendingEvents.length > 0) {
+			const event = this.pendingEvents.shift();
+			if (!event) {
+				console.warn(
+					"No event found in pendingEvents when trying to send to new overlay.",
+				);
+				continue;
+			}
+			this.overlay.send(event);
+		}
 		for (const admin of this.admins) {
-			admin.socket.send(JSON.stringify({ type: "newOverlay" }));
+			admin.send({ type: "newOverlay" });
 		}
 	}
 
@@ -54,7 +104,7 @@ export class WebSocketManager {
 		}
 		console.log("Forwarding message", message);
 		const adminIndex = this.adminIndex(ws);
-		if (this.overlay === ws) {
+		if (this.overlay?.socket === ws) {
 			// Forward the message to all admins
 			for (const admin of this.admins) {
 				if (admin.socket.readyState === WebSocket.OPEN) {
@@ -79,8 +129,8 @@ export class WebSocketManager {
 					break;
 			}
 			// Forward the message to all overlays
-			if (this.overlay?.readyState === WebSocket.OPEN) {
-				this.overlay?.send(messageData);
+			if (this.overlay?.isOpen) {
+				this.overlay?.send(message);
 			}
 			console.log("Forwarded message to overlays");
 		} else {
@@ -89,7 +139,7 @@ export class WebSocketManager {
 	}
 
 	public onClose(ws: ServerWebSocket<undefined>) {
-		if (this.overlay === ws) {
+		if (this.overlay?.socket === ws) {
 			this.overlay = null;
 			return;
 		}
@@ -106,10 +156,23 @@ export class WebSocketManager {
 	}
 }
 
-class AdminClient {
+class WsClient {
 	public readonly socket: ServerWebSocket<undefined>;
-	public readonly sources: StreamSource[] = [];
 	constructor(socket: ServerWebSocket<undefined>) {
 		this.socket = socket;
 	}
+
+	get isOpen() {
+		return this.socket.readyState === WebSocket.OPEN;
+	}
+
+	send(message: WSMessage) {
+		if (this.socket.readyState === WebSocket.OPEN) {
+			this.socket.send(JSON.stringify(message));
+		}
+	}
+}
+
+class AdminClient extends WsClient {
+	public readonly sources: StreamSource[] = [];
 }

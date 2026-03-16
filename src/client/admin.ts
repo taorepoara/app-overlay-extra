@@ -5,6 +5,7 @@ import {
 	type StreamType,
 } from "./ConnectionManager.js";
 import "./admin.css";
+import { confirmModal } from "./common.js";
 
 console.log("Admin script loaded");
 
@@ -40,6 +41,21 @@ const connectionManager = ConnectionManager.init("admin", async (message) => {
 		case "setScene":
 			(document.getElementById("scene") as HTMLSelectElement).value =
 				message.scene;
+			break;
+		case "twitchAuthRequired":
+			confirmModal("Twitch auth needed. Redirect to authorize page ?").then(
+				(result) => {
+					if (result) {
+						console.log("Start Twitch auth flow");
+						const authorizeParams = new URLSearchParams(message.params);
+						authorizeParams.append(
+							"redirect_uri",
+							`${location.origin}/redirect`,
+						);
+						location.href = `https://id.twitch.tv/oauth2/authorize?${authorizeParams}`;
+					}
+				},
+			);
 			break;
 		default:
 			console.warn("Unknown message type received: ", message);

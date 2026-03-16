@@ -3,7 +3,11 @@ export type WSMessage =
 	| RTCConnectionMessage
 	| AppMessage;
 
-export type AppMessage = SetSceneMessage | NewSourceMessage;
+export type AppMessage =
+	| SetSceneMessage
+	| NewSourceMessage
+	| TwitchAuthRequiredMessage
+	| TwitchEvent;
 
 export type ClientType = "admin" | "overlay";
 
@@ -29,6 +33,11 @@ export type StreamSource = {
 export type NewSourceMessage = {
 	type: "newSource";
 	source: StreamSource;
+};
+
+export type TwitchAuthRequiredMessage = {
+	type: "twitchAuthRequired";
+	params: Record<string, string>;
 };
 
 export type RTCConnectionMessage =
@@ -63,3 +72,23 @@ export const scenes = [
 export type Scene = (typeof scenes)[number];
 
 export type StreamType = "camera" | "screen";
+
+export type TwitchEvent = TwitchChatMessageEvent | TwitchChannelEvent;
+
+export type TwitchChatMessageEvent = {
+	type: "chatMessage";
+	// username: string;
+	// message: string;
+};
+
+export type TwitchChannelEvent = FollowerNumberEvent | SubscriptionNumberEvent;
+
+export type FollowerNumberEvent = {
+	type: "followerNumber";
+	count: number;
+};
+
+export type SubscriptionNumberEvent = {
+	type: "subscriptionNumber";
+	count: number;
+};

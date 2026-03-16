@@ -44,8 +44,10 @@ Features:
   - new tchat messages: add guitare sound
   - new follower: add guitare solo sound + confetti
 	- new/renew subscriber: add guitare solo sound + confetti
+- Récupération de la clé de streaming (pour lancer via FFMPEG)
+- Ajouter en Guest la personne qui stream (pour récupérer l'afficher sur le stream de la chaîne commune)
 - Nombre d'abonnés
 - Nombre de followers
-- En find e stream:
+- En fin de stream:
   - Ajouter le prochain stream dans le calendrier
   - Définir les infos du live (titre, catégorie, etc.)
