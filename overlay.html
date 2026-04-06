@@ -9,23 +9,7 @@
 <body>
 	<header>
 			<h1>Lenra</h1>
-			<ul>
-					<li>
-							<h2>Last suscriber</h2>
-							<p><strong><output id="subscriberCount">...</output></strong></p>
-					</li>
-					<li>
-							<h2>Last follower</h2>
-							<p><strong><output id="followerCount">...</output></strong></p>
-					</li>
-					<li>
-							<h2>Latest donation</h2>
-							<p><strong><output>...</output></strong></p>
-					</li>
-					<li id="subsProgress">
-							<p><output>...</output>/<strong>...</strong> Abonnements</p>
-					</li>
-			</ul>
+			<p>Chaque soutien apporté à la chaîne nous permet de financer nos projets open source</p>
 	</header>
 	<main>
 		<p class="message" data-scene="start">J'arrive tout de suite</p>
@@ -34,7 +18,20 @@
 		<video id="screen" autoplay playsinline></video>
 	</main>
 	<footer>
-			<p>Chaque soutien apporté à la chaîne nous permet de financer nos projets open source</p>
+			<ul>
+					<li class="viewers">
+							<output id="viewerCount">...</output> viewers
+					</li>
+					<li class="followers">
+							<output id="followerCount">...</output> follower<output id="latestFollower" class="last">...</output>
+					</li>
+					<li class="subscriber">
+							<output id="subscriberCount">...</output> suscribers<output id="latestSubscriber" class="last">...</output>
+					</li>
+					<li class="stars">
+							<output id="starsCount">...</output> GitHub stargazers<output id="latestStargazer" class="last">...</output>
+					</li>
+			</ul>
 	</footer>
 </body>
 </html>

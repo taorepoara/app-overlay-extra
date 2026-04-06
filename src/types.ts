@@ -5,11 +5,14 @@ export type WSMessage =
 
 export type AppMessage =
 	| SetSceneMessage
+	| HideInterfaceMessage
+	| SetSoundMutedMessage
 	| NewSourceMessage
 	| TwitchAuthRequiredMessage
 	| TwitchEvent;
 
 export type ClientType = "admin" | "overlay";
+export type SoundInput = "microphone" | "music";
 
 export type ConnectClientMessage = {
 	type: "connectClient";
@@ -23,6 +26,17 @@ export type NewOverlayMessage = {
 export type SetSceneMessage = {
 	type: "setScene";
 	scene: Scene;
+};
+
+export type HideInterfaceMessage = {
+	type: "hideInterface";
+	hidden: boolean;
+};
+
+export type SetSoundMutedMessage = {
+	type: "setSoundMuted";
+	input: SoundInput;
+	muted: boolean;
 };
 
 export type StreamSource = {

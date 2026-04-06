@@ -5,6 +5,7 @@ import {
 	Music,
 	MusicPartGroup,
 	MusicTrack,
+	type TrackName,
 } from "./AudioManager.ts";
 import { alertModal } from "./common.ts";
 import {
@@ -18,6 +19,10 @@ import "./overlay.css";
 
 console.log("Admin script loaded");
 const offScenes = ["start", "end"] as Scene[];
+const soundState = {
+	microphoneMuted: false,
+	musicMuted: false,
+};
 
 alertModal("Overlay connected to server.").then(() => {
 	initBassLoop().catch((e) => {
@@ -42,6 +47,30 @@ alertModal("Overlay connected to server.").then(() => {
 				// case "refresh-css":
 				// 	refreshCss();
 				// 	break;
+				case "hideInterface": {
+					const main = document.querySelector("main");
+					if (!main) {
+						console.error("Main element not found to hide interface.");
+						return;
+					}
+					main.dataset.interfaceHidden = message.hidden.toString();
+					break;
+				}
+				case "setSoundMuted": {
+					switch (message.input) {
+						case "microphone":
+							audioManager.setTrackMuted("camera", message.muted);
+							soundState.microphoneMuted = message.muted;
+							break;
+						case "music":
+							audioManager.setTrackMuted("music", message.muted);
+							soundState.musicMuted = message.muted;
+							break;
+						default:
+							console.warn("Unknown sound input: ", message.input);
+					}
+					break;
+				}
 				case "followerNumber": {
 					const followerCountElement = document.getElementById("followerCount");
 					if (followerCountElement) {
@@ -144,6 +173,9 @@ alertModal("Overlay connected to server.").then(() => {
 				`Adding audio track to source stream (${type}): `,
 				audioTrack,
 			);
+			if (type === "camera") {
+				audioTrack.setMuted(soundState.microphoneMuted);
+			}
 		}
 		source.stream = stream;
 		const videoElement = document.getElementById(type);
@@ -186,9 +218,9 @@ export type PartName = (typeof partNames)[number];
 
 async function initBassLoop() {
 	const music = new Music();
+	music.setMuted(soundState.musicMuted);
 	const bassSoundTrack = new MusicTrack(music);
 	const guitarSoundTrack = new MusicTrack(music);
-
 	const bassBase = await bassSoundTrack.addPart(
 		"/data/sound/bass-couplet.mp3",
 		2,
@@ -204,7 +236,6 @@ async function initBassLoop() {
 		await guitarSoundTrack.addPart("/data/sound/guitare-refrain.mp3", 3),
 		await guitarSoundTrack.addPart("/data/sound/guitare-refrain-fin.mp3", 1),
 	]);
-
 	bassBase.onended = () => {
 		let nextPart: IMusicTrackPart;
 		if (goToTransition) {
@@ -219,7 +250,6 @@ async function initBassLoop() {
 		}
 		nextPart.start();
 	};
-
 	// base2.onended = () => {
 	// 	let nextPart: IMusicTrackPart;
 	// 	if (goToTransition) {
@@ -232,12 +262,10 @@ async function initBassLoop() {
 	// 	}
 	// 	nextPart.start();
 	// };
-
 	bassChorus.onended = () => {
 		applyNextSceneIfNeeded();
 		bassBase.start();
 	};
-
 	bassBase.start();
 }
 

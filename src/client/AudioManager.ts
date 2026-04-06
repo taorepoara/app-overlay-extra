@@ -1,6 +1,6 @@
 import type { StreamType } from "../types.ts";
 
-type TrackName = "music" | StreamType;
+export type TrackName = "music" | StreamType;
 
 export class AudioManager {
 	public static readonly instance: AudioManager = new AudioManager();
@@ -70,29 +70,60 @@ export class AudioManager {
 			console.warn(`Track with name ${name} not found.`);
 			return;
 		}
-		const start = track.gainNode.gain.value;
-		const diff = gain - start;
+		track.setGain(gain);
+	}
+
+	setTrackMuted(name: TrackName, muted: boolean) {
+		const track = this.tracks[name];
+		if (!track) {
+			console.warn(`Track with name ${name} not found.`);
+			return;
+		}
+		track.setMuted(muted);
+	}
+}
+
+abstract class SoundTrack {
+	protected readonly gainNode: GainNode;
+	private gain = 1;
+	private muted = false;
+	constructor(name: TrackName) {
+		AudioManager.instance.addTrack(name, this);
+		this.gainNode = AudioManager.instance.audioContext.createGain();
+		this.gainNode.connect(AudioManager.instance.audioContext.destination);
+	}
+
+	private applyGain() {
+		const effectiveGain = this.muted ? 0 : this.gain;
+		this.gainNode.gain.cancelScheduledValues(AudioManager.instance.audioContext.currentTime);
+		const start = this.gainNode.gain.value;
+		const diff = effectiveGain - start;
 		const duration = 0.3;
-		track.gainNode.gain.setValueCurveAtTime(
+		this.gainNode.gain.setValueCurveAtTime(
 			[
 				start,
 				start + (diff * 10) / 100,
 				start + (diff * 50) / 100,
 				start + (diff * 90) / 100,
-				gain,
+				effectiveGain,
 			],
-			this.audioContext.currentTime,
+			AudioManager.instance.audioContext.currentTime,
 			duration,
 		);
 	}
-}
 
-abstract class SoundTrack {
-	public readonly gainNode: GainNode;
-	constructor(name: TrackName) {
-		AudioManager.instance.addTrack(name, this);
-		this.gainNode = AudioManager.instance.audioContext.createGain();
-		this.gainNode.connect(AudioManager.instance.audioContext.destination);
+	setGain(gain: number) {
+		this.gain = gain;
+		this.applyGain();
+	}
+
+	setMuted(muted: boolean) {
+		this.muted = muted;
+		this.applyGain();
+	}
+
+	get output(): AudioNode {
+		return this.gainNode;
 	}
 }
 
@@ -121,7 +152,7 @@ export class MusicTrack {
 	constructor(readonly music: Music) {
 		this.music.tracks.push(this);
 		this.gainNode = AudioManager.instance.audioContext.createGain();
-		this.gainNode.connect(music.gainNode);
+		this.gainNode.connect(music.output);
 	}
 
 	async addPart(

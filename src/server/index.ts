@@ -13,7 +13,7 @@ const server = Bun.serve({
 		if (path === "/ws") {
 			const upgraded = server.upgrade(req);
 			if (upgraded) {
-				// return;
+				return;
 			}
 			return new Response("Upgrade Required", { status: 426 });
 		}

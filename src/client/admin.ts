@@ -42,6 +42,19 @@ const connectionManager = ConnectionManager.init("admin", async (message) => {
 			(document.getElementById("scene") as HTMLSelectElement).value =
 				message.scene;
 			break;
+		case "hideInterface":
+			(document.getElementById("hide-interface") as HTMLInputElement).checked =
+				message.hidden;
+			break;
+		case "setSoundMuted":
+			if (message.input === "microphone") {
+				(document.getElementById("mute-mic") as HTMLInputElement).checked =
+					message.muted;
+			} else if (message.input === "music") {
+				(document.getElementById("mute-music") as HTMLInputElement).checked =
+					message.muted;
+			}
+			break;
 		case "twitchAuthRequired":
 			confirmModal("Twitch auth needed. Redirect to authorize page ?").then(
 				(result) => {
@@ -337,5 +350,42 @@ async function initAdminUI() {
 	) as HTMLButtonElement;
 	shareScreenButton.addEventListener("click", () => {
 		addDeviceShare();
+	});
+
+	
+
+	const hideInterfaceCheckbox = document.getElementById(
+		"hide-interface",
+	) as HTMLInputElement;
+	hideInterfaceCheckbox.addEventListener("change", () => {
+		// mute on overlay side
+		connectionManager.sendMessage({
+			type: "hideInterface",
+			hidden: hideInterfaceCheckbox.checked,
+		});
+	});
+
+	const muteMicCheckbox = document.getElementById(
+		"mute-mic",
+	) as HTMLInputElement;
+	muteMicCheckbox.addEventListener("change", () => {
+		// mute on overlay side
+		connectionManager.sendMessage({
+			type: "setSoundMuted",
+			input: "microphone",
+			muted: muteMicCheckbox.checked,
+		});
+	});
+
+	const muteMusicCheckbox = document.getElementById(
+		"mute-music",
+	) as HTMLInputElement;
+	muteMusicCheckbox.addEventListener("change", () => {
+		// mute on overlay side
+		connectionManager.sendMessage({
+			type: "setSoundMuted",
+			input: "music",
+			muted: muteMusicCheckbox.checked,
+		});
 	});
 }
