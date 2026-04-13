@@ -71,6 +71,13 @@ alertModal("Overlay connected to server.").then(() => {
 					}
 					break;
 				}
+				case "viewerCount": {
+					const viewerCountElement = document.getElementById("viewerCount");
+					if (viewerCountElement) {
+						viewerCountElement.textContent = message.count.toString();
+					}
+					break;
+				}
 				case "followerNumber": {
 					const followerCountElement = document.getElementById("followerCount");
 					if (followerCountElement) {

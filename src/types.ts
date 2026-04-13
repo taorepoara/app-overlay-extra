@@ -95,7 +95,10 @@ export type TwitchChatMessageEvent = {
 	// message: string;
 };
 
-export type TwitchChannelEvent = FollowerNumberEvent | SubscriptionNumberEvent;
+export type TwitchChannelEvent =
+	| FollowerNumberEvent
+	| SubscriptionNumberEvent
+	| ViewerCountEvent;
 
 export type FollowerNumberEvent = {
 	type: "followerNumber";
@@ -104,5 +107,10 @@ export type FollowerNumberEvent = {
 
 export type SubscriptionNumberEvent = {
 	type: "subscriptionNumber";
+	count: number;
+};
+
+export type ViewerCountEvent = {
+	type: "viewerCount";
 	count: number;
 };

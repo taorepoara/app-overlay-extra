@@ -82,6 +82,19 @@ export class TwitchClient {
 				count: subscriberCount,
 			});
 		});
+		this.startViewerCountPolling();
+	}
+
+	private startViewerCountPolling() {
+		let lastViewerCount = -1;
+		const poll = async () => {
+			const count = await this.getViewerCount();
+			if (count === lastViewerCount) return;
+			lastViewerCount = count;
+			this.onChannelEvent?.({ type: "viewerCount", count });
+		};
+		poll();
+		setInterval(poll, 60_000);
 	}
 
 	private async startListeningChat() {
@@ -111,6 +124,16 @@ export class TwitchClient {
 		return this.apiClient.channels.getChannelFollowerCount(
 			this.channelId || TwitchClient.channel,
 		);
+	}
+
+	async getViewerCount(): Promise<number> {
+		if (this.needsAuth) {
+			throw new Error("Not authenticated with Twitch");
+		}
+		const stream = await this.apiClient.streams.getStreamByUserId(
+			this.channelId || TwitchClient.channel,
+		);
+		return stream?.viewers ?? 0;
 	}
 
 	async getSubscriberNumber(): Promise<number> {
