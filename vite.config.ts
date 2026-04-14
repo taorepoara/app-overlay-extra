@@ -17,11 +17,6 @@ export default defineConfig({
 		host: true,
 		allowedHosts: true,
 		proxy: {
-			"/ws": {
-				target: "ws://localhost:3001",
-				ws: true,
-				rewriteWsOrigin: true,
-			},
 			"/data/": {
 				target: "http://localhost:3001"
 			},
