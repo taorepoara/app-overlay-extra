@@ -1,8 +1,10 @@
 import {
 	AudioManager,
 	AudioStreamTrack,
+	type IMusicPart,
 	type IMusicTrackPart,
 	Music,
+	MusicPart,
 	MusicPartGroup,
 	MusicTrack,
 	type TrackName,
@@ -224,32 +226,33 @@ const partNames = [
 export type PartName = (typeof partNames)[number];
 
 async function initBassLoop() {
-	const music = new Music();
+	const music = new Music(106);
 	music.setMuted(soundState.musicMuted);
-	const bassSoundTrack = new MusicTrack(music);
-	const guitarSoundTrack = new MusicTrack(music);
+	const bassSoundTrack = new MusicTrack(music, "Bass");
+	const guitarSoundTrack = new MusicTrack(music, "Guitare");
 	const bassBase = await bassSoundTrack.addPart(
 		"/data/sound/bass-couplet.mp3",
 		2,
 	);
-	// const base = await bassSoundTrack.addPart("/data/sound/bass-refrain.mp3", 2);
-	// const base2 = await bassSoundTrack.addPart("/data/sound/bass-base2.mp3", 2);
-	const bassChorus = new MusicPartGroup([
+	const bassChorus = new MusicPartGroup(
 		await bassSoundTrack.addPart("/data/sound/bass-refrain.mp3", 3),
 		await bassSoundTrack.addPart("/data/sound/bass-refrain-fin.mp3", 1),
-	]);
-	// const guitareNotif = await guitarSoundTrack.addPart("/data/sound/guitare-notif.mp3", 1);
-	const guitareChorus = new MusicPartGroup([
+	);
+	const guitareNotif = await guitarSoundTrack.addPart(
+		"/data/sound/guitare-notif.mp3",
+		1,
+	);
+	const guitareChorus = new MusicPartGroup(
 		await guitarSoundTrack.addPart("/data/sound/guitare-refrain.mp3", 3),
 		await guitarSoundTrack.addPart("/data/sound/guitare-refrain-fin.mp3", 1),
-	]);
+	);
+	const chorus = new MusicPart(bassChorus, guitareChorus);
 	bassBase.onended = () => {
-		let nextPart: IMusicTrackPart;
+		let nextPart: IMusicPart;
 		if (goToTransition) {
 			goToTransition = false;
 			applyScene("transition");
-			nextPart = bassChorus;
-			// guitareChorus.start();
+			nextPart = chorus;
 		} else {
 			applyNextSceneIfNeeded();
 			// nextPart = Math.random() < 0.2 ? base2 : base;
@@ -269,7 +272,7 @@ async function initBassLoop() {
 	// 	}
 	// 	nextPart.start();
 	// };
-	bassChorus.onended = () => {
+	chorus.onended = () => {
 		applyNextSceneIfNeeded();
 		bassBase.start();
 	};

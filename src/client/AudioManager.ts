@@ -95,7 +95,9 @@ abstract class SoundTrack {
 
 	private applyGain() {
 		const effectiveGain = this.muted ? 0 : this.gain;
-		this.gainNode.gain.cancelScheduledValues(AudioManager.instance.audioContext.currentTime);
+		this.gainNode.gain.cancelScheduledValues(
+			AudioManager.instance.audioContext.currentTime,
+		);
 		const start = this.gainNode.gain.value;
 		const diff = effectiveGain - start;
 		const duration = 0.3;
@@ -137,10 +139,29 @@ export class AudioStreamTrack extends SoundTrack {
 }
 
 export class Music extends SoundTrack {
-	readonly tracks: MusicTrack[] = [];
+	private readonly tracks: MusicTrack[] = [];
 
-	constructor() {
+	constructor(readonly bpm: number) {
 		super("music");
+	}
+
+	addTrack(track: MusicTrack) {
+		this.tracks.forEach((t) => {
+			if (t === track)
+				throw new Error(`The track "${track.name}" is add twice`);
+			if (t.name === track.name)
+				throw new Error(
+					`There is two tracks with the same name: "${track.name}"`,
+				);
+		});
+		this.tracks.push(track);
+	}
+
+	get nextStartTime() {
+		return Math.max(
+			...this.tracks.map((track) => track.nextStartTime),
+			AudioManager.instance.audioContext.currentTime,
+		);
 	}
 }
 
@@ -149,8 +170,11 @@ export class MusicTrack {
 	private readonly parts: MusicTrackPart[] = [];
 	public nextStartTime = 0;
 
-	constructor(readonly music: Music) {
-		this.music.tracks.push(this);
+	constructor(
+		readonly music: Music,
+		readonly name: string,
+	) {
+		this.music.addTrack(this);
 		this.gainNode = AudioManager.instance.audioContext.createGain();
 		this.gainNode.connect(music.output);
 	}
@@ -168,15 +192,19 @@ export class MusicTrack {
 	}
 }
 
-export interface IMusicTrackPart {
+export interface IMusicPart {
 	playing: boolean;
 	duration: number;
-	start(): Date;
 	onended: (() => void) | null;
+	start(time?: number): Date;
+}
+
+export interface IMusicTrackPart extends IMusicPart {
+	track: MusicTrack;
 }
 
 export class MusicTrackPart implements IMusicTrackPart {
-	private readonly track: MusicTrack;
+	public readonly track: MusicTrack;
 	public readonly buffer: AudioBuffer;
 	public readonly repeat: number;
 	public readonly offset?: number;
@@ -207,10 +235,10 @@ export class MusicTrackPart implements IMusicTrackPart {
 		return (this._duration ?? this.buffer.duration) * this.repeat;
 	}
 
-	start(): Date {
+	start(start?: number): Date {
 		if (this._playing) throw new Error("SoundTrackPart is already playing");
 		this._playing = true;
-		const startTime = this.track.nextStartTime;
+		const startTime = start ?? this.track.nextStartTime;
 		const diff =
 			(startTime - AudioManager.instance.audioContext.currentTime) * 1000;
 		const endDate = new Date(
@@ -258,10 +286,25 @@ export class MusicTrackPart implements IMusicTrackPart {
 }
 
 export class MusicPartGroup implements IMusicTrackPart {
+	public readonly parts: MusicTrackPart[];
+	public readonly track: MusicTrack;
 	private currentPartIndex = -1;
 	public onended: (() => void) | null = null;
 
-	constructor(readonly parts: MusicTrackPart[]) {}
+	constructor(...parts: MusicTrackPart[]) {
+		if (parts.length < 2)
+			throw new Error("A MusicPartGroup must have at least 2 parts");
+		this.track = parts[0].track;
+		for (let i = 1; i < parts.length; i++) {
+			const part = parts[i];
+			if (part.track !== this.track) {
+				throw new Error(
+					"All the parts of a MusicPartGroup must be of the same track",
+				);
+			}
+		}
+		this.parts = parts;
+	}
 
 	get playing(): boolean {
 		return this.parts.some((part) => part.playing);
@@ -295,5 +338,58 @@ export class MusicPartGroup implements IMusicTrackPart {
 			}
 		};
 		return nextPart.start();
+	}
+}
+
+export class MusicPart implements IMusicPart {
+	readonly trackParts: IMusicTrackPart[];
+	private _onended: (() => void) | null = null;
+
+	constructor(...trackParts: IMusicTrackPart[]) {
+		this.trackParts = trackParts;
+		trackParts
+			.map((trackPart) => trackPart.track)
+			.reduce((tracks, track) => {
+				if (tracks.includes(track)) {
+					throw new Error(
+						`All the music track parts of a MusicPart must have a unique track. Track "${track.name}" is duplicated`,
+					);
+				}
+				tracks.push(track);
+				return tracks;
+			}, [] as MusicTrack[]);
+	}
+
+	get playing(): boolean {
+		return !!this.trackParts.find((p) => p.playing);
+	}
+	get duration(): number {
+		return Math.max(...this.trackParts.map((t) => t.duration));
+	}
+	get onended(): (() => void) | null {
+		return this._onended;
+	}
+	set onended(listener: (() => void) | null) {
+		let endTriggers = 0;
+		this._onended = listener;
+		this.trackParts.forEach((trackPart) => {
+			if (listener === null) {
+				trackPart.onended = null;
+			}
+			trackPart.onended = () => {
+				if (++endTriggers === this.trackParts.length) {
+					endTriggers = 0;
+					listener?.();
+				}
+			};
+		});
+	}
+
+	start(time?: number): Date {
+		return new Date(
+			Math.max(
+				...this.trackParts.map((trackPart) => trackPart.start(time).getTime()),
+			),
+		);
 	}
 }
