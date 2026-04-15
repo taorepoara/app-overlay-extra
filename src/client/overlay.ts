@@ -7,14 +7,15 @@ import {
 	MusicPart,
 	MusicPartGroup,
 	MusicTrack,
+	type MusicTrackPart,
 	type TrackName,
 } from "./AudioManager.ts";
-import { alertModal } from "./common.ts";
 import {
 	ConnectionManager,
 	type Scene,
 	type StreamType,
 } from "./ConnectionManager.ts";
+import { alertModal } from "./common.ts";
 import "./css/footer.css";
 import "./css/header.css";
 import "./overlay.css";
@@ -25,6 +26,11 @@ const soundState = {
 	microphoneMuted: false,
 	musicMuted: false,
 };
+
+const CHAT_NOTIF_COOLDOWN_MS = 30_000; // Délai minimum entre deux sons de notification tchat (ms)
+let chatNotifPart: MusicTrackPart | null = null;
+let subscriptionSoloPart: MusicTrackPart | null = null;
+let lastChatNotifTime: number | null = null;
 
 alertModal("Overlay connected to server.").then(() => {
 	initBassLoop().catch((e) => {
@@ -92,6 +98,27 @@ alertModal("Overlay connected to server.").then(() => {
 						document.getElementById("subscriberCount");
 					if (subscriberCountElement) {
 						subscriberCountElement.textContent = message.count.toString();
+					}
+					break;
+				}
+				case "chatMessage": {
+					const now = Date.now();
+					if (
+						chatNotifPart &&
+						!chatNotifPart.playing &&
+						(lastChatNotifTime === null ||
+							now - lastChatNotifTime >= CHAT_NOTIF_COOLDOWN_MS)
+					) {
+						lastChatNotifTime = now;
+						chatNotifPart.start(chatNotifPart.track.music.nextStartTime);
+					}
+					break;
+				}
+				case "newSubscription": {
+					if (subscriptionSoloPart && !subscriptionSoloPart.playing) {
+						subscriptionSoloPart.start(
+							subscriptionSoloPart.track.music.nextStartTime,
+						);
 					}
 					break;
 				}
@@ -234,8 +261,11 @@ async function initBassLoop() {
 		"/data/sound/bass-couplet.mp3",
 		2,
 	);
-	const guitareNotif = await guitarSoundTrack.addPart(
-		"/data/sound/guitare-notif.mp3",
+	// Track unique pour toutes les notifications (chat et abonnement) : pas de lecture simultanée
+	const notifTrack = new MusicTrack(music, "Notif");
+	chatNotifPart = await notifTrack.addPart("/data/sound/guitare-notif.mp3");
+	subscriptionSoloPart = await notifTrack.addPart(
+		"/data/sound/guitare-solo-1.mp3",
 	);
 	const chorus = new MusicPart(
 		new MusicPartGroup(

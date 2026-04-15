@@ -36,6 +36,7 @@ export class TwitchClient {
 	private channelId: string | null = null;
 	public onChatMessage: ((message: ChatMessage) => void) | null = null;
 	public onChannelEvent: ((event: TwitchChannelEvent) => void) | null = null;
+	public onNewSubscription: (() => void) | null = null;
 
 	constructor() {
 		console.log("TwitchClient initialized");
@@ -100,11 +101,24 @@ export class TwitchClient {
 	private async startListeningChat() {
 		console.log("Starting Twitch chat client");
 		this.chatClient.connect();
+		// onMessage only fires for messages that passed AutoMod (held messages never reach IRC)
 		this.chatClient.onMessage((channel, user, text, message) => {
 			console.log(
 				`Received Twitch chat message in channel ${channel} from ${user}: ${text}`,
 			);
 			this.onChatMessage?.(message);
+		});
+		this.chatClient.onSub((channel, user) => {
+			console.log(`New subscription in ${channel} from ${user}`);
+			this.onNewSubscription?.();
+		});
+		this.chatClient.onResub((channel, user) => {
+			console.log(`New resubscription in ${channel} from ${user}`);
+			this.onNewSubscription?.();
+		});
+		this.chatClient.onSubGift((channel, user) => {
+			console.log(`New gifted subscription in ${channel} from ${user}`);
+			this.onNewSubscription?.();
 		});
 	}
 

@@ -41,6 +41,9 @@ export class WebSocketManager {
 			});
 		};
 		twitchClient.onChannelEvent = this.onTwitchEvent.bind(this);
+		twitchClient.onNewSubscription = () => {
+			this.onTwitchEvent({ type: "newSubscription" });
+		};
 	}
 
 	private onTwitchEvent(event: TwitchEvent) {
