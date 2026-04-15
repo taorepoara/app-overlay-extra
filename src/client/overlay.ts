@@ -234,19 +234,19 @@ async function initBassLoop() {
 		"/data/sound/bass-couplet.mp3",
 		2,
 	);
-	const bassChorus = new MusicPartGroup(
-		await bassSoundTrack.addPart("/data/sound/bass-refrain.mp3", 3),
-		await bassSoundTrack.addPart("/data/sound/bass-refrain-fin.mp3", 1),
-	);
 	const guitareNotif = await guitarSoundTrack.addPart(
 		"/data/sound/guitare-notif.mp3",
-		1,
 	);
-	const guitareChorus = new MusicPartGroup(
-		await guitarSoundTrack.addPart("/data/sound/guitare-refrain.mp3", 3),
-		await guitarSoundTrack.addPart("/data/sound/guitare-refrain-fin.mp3", 1),
+	const chorus = new MusicPart(
+		new MusicPartGroup(
+			await bassSoundTrack.addPart("/data/sound/bass-refrain.mp3", 3),
+			await bassSoundTrack.addPart("/data/sound/bass-refrain-fin.mp3"),
+		),
+		new MusicPartGroup(
+			await guitarSoundTrack.addPart("/data/sound/guitare-refrain.mp3", 3),
+			await guitarSoundTrack.addPart("/data/sound/guitare-refrain-fin.mp3"),
+		),
 	);
-	const chorus = new MusicPart(bassChorus, guitareChorus);
 	bassBase.onended = () => {
 		let nextPart: IMusicPart;
 		if (goToTransition) {
