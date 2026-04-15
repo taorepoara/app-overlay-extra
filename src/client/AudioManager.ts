@@ -319,13 +319,13 @@ export class MusicPartGroup implements IMusicTrackPart {
 	get duration(): number {
 		return this.parts.reduce((sum, part) => sum + part.duration, 0);
 	}
-	start(): Date {
+	start(time?: number): Date {
 		if (this.currentPartIndex >= 0)
 			throw new Error("MusicPartGroup is already playing");
 
 		console.debug("MusicPartGroup start", this);
 		this.currentPartIndex = 0;
-		const firstPartEnd = this.playNextPart().getTime();
+		const firstPartEnd = this.playNextPart(time).getTime();
 		const endDate = new Date(
 			this.parts
 				.slice(1)
@@ -335,7 +335,7 @@ export class MusicPartGroup implements IMusicTrackPart {
 		return endDate;
 	}
 
-	private playNextPart(): Date {
+	private playNextPart(time?: number): Date {
 		console.debug("MusicPartGroup play next part", this.currentPartIndex, this);
 		const nextPart = this.parts[this.currentPartIndex];
 		nextPart.onended = () => {
@@ -347,7 +347,7 @@ export class MusicPartGroup implements IMusicTrackPart {
 				this.onended?.();
 			}
 		};
-		return nextPart.start();
+		return nextPart.start(time);
 	}
 }
 
