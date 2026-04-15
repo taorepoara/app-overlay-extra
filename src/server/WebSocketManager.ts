@@ -142,6 +142,10 @@ export class WebSocketManager {
 		console.log("Forwarding message", message);
 		const adminIndex = this.adminIndex(ws);
 		if (this.overlay?.socket === ws) {
+			if (message.type === "setScene") {
+				this.state.scene = message.scene;
+				console.log("Updated scene from overlay to", this.state.scene);
+			}
 			// Forward the message to all admins
 			for (const admin of this.admins) {
 				if (admin.socket.readyState === WebSocket.OPEN) {

@@ -1,8 +1,8 @@
 import {
 	ConnectionManager,
-	scenes,
 	type Scene,
 	type StreamType,
+	scenes,
 } from "./ConnectionManager.js";
 import "./admin.css";
 import { confirmModal } from "./common.js";
@@ -10,6 +10,48 @@ import { confirmModal } from "./common.js";
 console.log("Admin script loaded");
 
 const streams: Map<StreamType, MediaStream> = new Map();
+
+type MusicSyncState = {
+	windowEndTime: number | null;
+	pendingScene: string | null;
+};
+let musicSyncState: MusicSyncState = {
+	windowEndTime: null,
+	pendingScene: null,
+};
+let countdownInterval: ReturnType<typeof setInterval> | null = null;
+
+function updateMusicSyncDisplay() {
+	const countdownEl = document.getElementById(
+		"music-countdown",
+	) as HTMLElement | null;
+	const cancelBtn = document.getElementById(
+		"cancel-transition",
+	) as HTMLButtonElement | null;
+	if (!countdownEl) return;
+
+	const { windowEndTime, pendingScene } = musicSyncState;
+
+	if (windowEndTime === null) {
+		countdownEl.textContent = "Transition en cours…";
+		countdownEl.dataset.state = "transition";
+		if (cancelBtn) cancelBtn.hidden = true;
+		return;
+	}
+
+	const remaining = Math.max(0, windowEndTime - Date.now());
+	const seconds = (remaining / 1000).toFixed(1);
+
+	if (pendingScene) {
+		countdownEl.textContent = `→ ${pendingScene} dans ${seconds}s`;
+		countdownEl.dataset.state = "pending";
+		if (cancelBtn) cancelBtn.hidden = false;
+	} else {
+		countdownEl.textContent = `Fenêtre dans ${seconds}s`;
+		countdownEl.dataset.state = "idle";
+		if (cancelBtn) cancelBtn.hidden = true;
+	}
+}
 
 const permissions = [
 	"microphone",
@@ -69,6 +111,16 @@ const connectionManager = ConnectionManager.init("admin", async (message) => {
 					}
 				},
 			);
+			break;
+		case "musicSyncUpdate":
+			musicSyncState = {
+				windowEndTime: message.windowEndTime,
+				pendingScene: message.pendingScene,
+			};
+			updateMusicSyncDisplay();
+			if (countdownInterval === null) {
+				countdownInterval = setInterval(updateMusicSyncDisplay, 100);
+			}
 			break;
 		default:
 			console.warn("Unknown message type received: ", message);
@@ -352,7 +404,12 @@ async function initAdminUI() {
 		addDeviceShare();
 	});
 
-	
+	const cancelTransitionBtn = document.getElementById(
+		"cancel-transition",
+	) as HTMLButtonElement;
+	cancelTransitionBtn.addEventListener("click", () => {
+		connectionManager.sendMessage({ type: "cancelTransition" });
+	});
 
 	const hideInterfaceCheckbox = document.getElementById(
 		"hide-interface",

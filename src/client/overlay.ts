@@ -37,7 +37,7 @@ alertModal("Overlay connected to server.").then(() => {
 		console.error("Error initializing bass loop: ", e, e.stack);
 	});
 	// Open websocket connection to server
-	ConnectionManager.init(
+	overlayConnection = ConnectionManager.init(
 		"overlay",
 		async (message) => {
 			console.log("Received message in overlay", message);
@@ -122,6 +122,20 @@ alertModal("Overlay connected to server.").then(() => {
 					}
 					break;
 				}
+				case "cancelTransition": {
+					goToTransition = false;
+					nextScene = null;
+					const main = document.querySelector("main");
+					const currentScene = main?.dataset.scene as Scene | undefined;
+					if (currentScene) {
+						overlayConnection?.sendMessage({
+							type: "setScene",
+							scene: currentScene,
+						});
+					}
+					sendMusicSync(currentWindowEndTime, null);
+					break;
+				}
 				default:
 					console.warn("Unknown message type received", message);
 			}
@@ -158,6 +172,7 @@ alertModal("Overlay connected to server.").then(() => {
 			main.dataset.scene !== "transition" && fromOffScene !== toOffScene;
 		nextScene = scene;
 		console.log("Scene set to: ", scene);
+		sendMusicSync(currentWindowEndTime, nextScene);
 	}
 
 	// function refreshCss() {
@@ -240,6 +255,17 @@ const audioManager = AudioManager.instance;
 // let nextPart: PartName = currentPart;
 let goToTransition = false;
 let nextScene: Scene | null = null;
+let currentWindowEndTime: number | null = null;
+let overlayConnection: ReturnType<typeof ConnectionManager.init> | null = null;
+
+function sendMusicSync(windowEndTime: number | null, pending: Scene | null) {
+	currentWindowEndTime = windowEndTime;
+	overlayConnection?.sendMessage({
+		type: "musicSyncUpdate",
+		windowEndTime,
+		pendingScene: pending,
+	});
+}
 const chorusStartMargin = 0.173349057; // am(Ardour mesure)=1920; start=1773; bpm=106; val=((am−start)÷am) * 4 * (60 / bpm)
 const chorusEndMargin = 0.009433962; // am(Ardour mesure)=1920; start=8; bpm=106; val=(start÷am) * 4 * (60 / bpm)
 const chorusDuration = (2 * 4 * 60) / 106; // deux mesures de 4 temps
@@ -278,17 +304,17 @@ async function initBassLoop() {
 		),
 	);
 	bassBase.onended = () => {
-		let nextPart: IMusicPart;
 		if (goToTransition) {
 			goToTransition = false;
 			applyScene("transition");
-			nextPart = chorus;
+			const chorusEndDate = chorus.start();
+			sendMusicSync(chorusEndDate.getTime(), nextScene);
 		} else {
 			applyNextSceneIfNeeded();
-			// nextPart = Math.random() < 0.2 ? base2 : base;
-			nextPart = bassBase;
+			// const endDate = Math.random() < 0.2 ? base2.start() : base.start();
+			const endDate = bassBase.start();
+			sendMusicSync(endDate.getTime(), nextScene);
 		}
-		nextPart.start();
 	};
 	// base2.onended = () => {
 	// 	let nextPart: IMusicTrackPart;
@@ -304,9 +330,11 @@ async function initBassLoop() {
 	// };
 	chorus.onended = () => {
 		applyNextSceneIfNeeded();
-		bassBase.start();
+		const endDate = bassBase.start();
+		sendMusicSync(endDate.getTime(), nextScene);
 	};
-	bassBase.start();
+	const endDate = bassBase.start();
+	sendMusicSync(endDate.getTime(), nextScene);
 }
 
 function applyNextSceneIfNeeded() {

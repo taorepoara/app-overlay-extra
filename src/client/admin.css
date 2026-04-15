@@ -2,6 +2,30 @@ h1 {
 	display: none;
 }
 
+#music-sync {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+#music-countdown {
+	font-size: 0.75rem;
+	color: #888;
+	font-variant-numeric: tabular-nums;
+
+	&[data-state="pending"] {
+		font-size: 1rem;
+		font-weight: bold;
+		color: #f90;
+	}
+
+	&[data-state="transition"] {
+		font-size: 0.75rem;
+		font-style: italic;
+		color: #aaa;
+	}
+}
+
 video {
 	height: 12.5rem;
 	aspect-ratio: 16 / 9;

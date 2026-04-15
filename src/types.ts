@@ -9,7 +9,9 @@ export type AppMessage =
 	| SetSoundMutedMessage
 	| NewSourceMessage
 	| TwitchAuthRequiredMessage
-	| TwitchEvent;
+	| TwitchEvent
+	| MusicSyncUpdateMessage
+	| CancelTransitionMessage;
 
 export type ClientType = "admin" | "overlay";
 export type SoundInput = "microphone" | "music";
@@ -118,4 +120,14 @@ export type ViewerCountEvent = {
 
 export type NewSubscriptionEvent = {
 	type: "newSubscription";
+};
+
+export type MusicSyncUpdateMessage = {
+	type: "musicSyncUpdate";
+	windowEndTime: number | null;
+	pendingScene: Scene | null;
+};
+
+export type CancelTransitionMessage = {
+	type: "cancelTransition";
 };

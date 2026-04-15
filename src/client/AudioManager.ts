@@ -329,7 +329,7 @@ export class MusicPartGroup implements IMusicTrackPart {
 		const endDate = new Date(
 			this.parts
 				.slice(1)
-				.reduce((sum, part) => sum + part.duration, firstPartEnd),
+				.reduce((sum, part) => sum + part.duration * 1000, firstPartEnd),
 		);
 
 		return endDate;
