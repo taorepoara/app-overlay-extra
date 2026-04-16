@@ -10,6 +10,7 @@ body>header {
 	font-size: 0.75rem;
 	padding-right: 1rem;
 	z-index: 2;
+	overflow: hidden;
 
 	transition-property: opacity, translate;
 
@@ -67,31 +68,49 @@ body>header {
 	}
 
 	p {
+		--space: 2em;
+		position: absolute;
+		padding: 0.5em var(--space);
+		font-size: 120%;
+		white-space: nowrap;
 		color: var(--white);
-		background-image: linear-gradient(var(--background-reverse-angle),
-				transparent calc(0% + var(--angle-size) - 1px),
-				var(--black) calc(0% + var(--angle-size) + 1px)),
-			linear-gradient(var(--background-angle),
-				var(--black) calc(100% - var(--angle-size) - 1px),
-				transparent calc(100% - var(--angle-size) + 1px));
-		background-size: 51% 100%;
-		background-position: 0% 0%, 100% 0%;
-		background-repeat: no-repeat;
+		background: var(--black);
+		border-radius: 100em;
 		filter: drop-shadow(0 -2px 5px rgba(0, 0, 0, 0.5));
+		animation-name: header-marquee;
+		animation-composition: add;
+		animation-timing-function: linear;
+		animation-iteration-count: infinite;
+		animation-duration: 40s;
+		animation-delay: 10s;
+		/* Animation base values */
+		left: 100vw;
+		translate: 0;
 
 		&::before,
 		&::after {
-			--space: 2rem;
 			content: "🦝";
-			position: absolute;
-			left: var(--space);
-			top: 50%;
-			transform: translateY(-50%);
+			display: inline-block;
+			vertical-align: bottom;
+			font-size: 120%;
+			padding-inline-end: 1em;
 		}
 
 		&::after {
-			left: auto;
-			right: var(--space);
+			padding-inline-end: 0;
+			padding-inline-start: 1em;
 		}
+	}
+}
+
+@keyframes header-marquee {
+	0% {
+		left: 0;
+		translate: 0;
+	}
+
+	100% {
+		left: -100vw;
+		translate: -100% 0;
 	}
 }
