@@ -1,48 +1,43 @@
 import {
 	AudioManager,
 	AudioStreamTrack,
+	type IMusicPart,
 	type IMusicTrackPart,
 	Music,
+	MusicPart,
 	MusicPartGroup,
 	MusicTrack,
+	type MusicTrackPart,
+	type TrackName,
 } from "./AudioManager.ts";
 import {
 	ConnectionManager,
 	type Scene,
 	type StreamType,
 } from "./ConnectionManager.ts";
+import { alertModal } from "./common.ts";
 import "./css/footer.css";
 import "./css/header.css";
 import "./overlay.css";
 
 console.log("Admin script loaded");
 const offScenes = ["start", "end"] as Scene[];
+const soundState = {
+	microphoneMuted: false,
+	musicMuted: false,
+};
 
-function alertModal(message: string): Promise<void> {
-	return new Promise((resolve) => {
-		const modal = document.createElement("dialog");
-		const modalMessage = document.createElement("p");
-		const closeButton = document.createElement("button");
-		closeButton.textContent = "Close";
-		modalMessage.textContent = message;
-		closeButton.addEventListener("click", () => {
-			modal.close();
-			modal.remove();
-			resolve();
-		});
-		modal.appendChild(modalMessage);
-		modal.appendChild(closeButton);
-		document.body.appendChild(modal);
-		modal.showModal();
-	});
-}
+const CHAT_NOTIF_COOLDOWN_MS = 30_000; // Délai minimum entre deux sons de notification tchat (ms)
+let chatNotifPart: MusicTrackPart | null = null;
+let subscriptionSoloPart: MusicTrackPart | null = null;
+let lastChatNotifTime: number | null = null;
 
 alertModal("Overlay connected to server.").then(() => {
 	initBassLoop().catch((e) => {
 		console.error("Error initializing bass loop: ", e, e.stack);
 	});
 	// Open websocket connection to server
-	ConnectionManager.init(
+	overlayConnection = ConnectionManager.init(
 		"overlay",
 		async (message) => {
 			console.log("Received message in overlay", message);
@@ -60,6 +55,87 @@ alertModal("Overlay connected to server.").then(() => {
 				// case "refresh-css":
 				// 	refreshCss();
 				// 	break;
+				case "hideInterface": {
+					const main = document.querySelector("main");
+					if (!main) {
+						console.error("Main element not found to hide interface.");
+						return;
+					}
+					main.dataset.interfaceHidden = message.hidden.toString();
+					break;
+				}
+				case "setSoundMuted": {
+					switch (message.input) {
+						case "microphone":
+							audioManager.setTrackMuted("camera", message.muted);
+							soundState.microphoneMuted = message.muted;
+							break;
+						case "music":
+							audioManager.setTrackMuted("music", message.muted);
+							soundState.musicMuted = message.muted;
+							break;
+						default:
+							console.warn("Unknown sound input: ", message.input);
+					}
+					break;
+				}
+				case "viewerCount": {
+					const viewerCountElement = document.getElementById("viewerCount");
+					if (viewerCountElement) {
+						viewerCountElement.textContent = message.count.toString();
+					}
+					break;
+				}
+				case "followerNumber": {
+					const followerCountElement = document.getElementById("followerCount");
+					if (followerCountElement) {
+						followerCountElement.textContent = message.count.toString();
+					}
+					break;
+				}
+				case "subscriptionNumber": {
+					const subscriberCountElement =
+						document.getElementById("subscriberCount");
+					if (subscriberCountElement) {
+						subscriberCountElement.textContent = message.count.toString();
+					}
+					break;
+				}
+				case "chatMessage": {
+					const now = Date.now();
+					if (
+						chatNotifPart &&
+						!chatNotifPart.playing &&
+						(lastChatNotifTime === null ||
+							now - lastChatNotifTime >= CHAT_NOTIF_COOLDOWN_MS)
+					) {
+						lastChatNotifTime = now;
+						chatNotifPart.start(chatNotifPart.track.music.nextStartTime);
+					}
+					break;
+				}
+				case "newSubscription": {
+					if (subscriptionSoloPart && !subscriptionSoloPart.playing) {
+						subscriptionSoloPart.start(
+							subscriptionSoloPart.track.music.nextStartTime,
+						);
+					}
+					break;
+				}
+				case "cancelTransition": {
+					goToTransition = false;
+					nextScene = null;
+					const main = document.querySelector("main");
+					const currentScene = main?.dataset.scene as Scene | undefined;
+					if (currentScene) {
+						overlayConnection?.sendMessage({
+							type: "setScene",
+							scene: currentScene,
+						});
+					}
+					sendMusicSync(currentWindowEndTime, null);
+					break;
+				}
 				default:
 					console.warn("Unknown message type received", message);
 			}
@@ -96,6 +172,7 @@ alertModal("Overlay connected to server.").then(() => {
 			main.dataset.scene !== "transition" && fromOffScene !== toOffScene;
 		nextScene = scene;
 		console.log("Scene set to: ", scene);
+		sendMusicSync(currentWindowEndTime, nextScene);
 	}
 
 	// function refreshCss() {
@@ -147,6 +224,9 @@ alertModal("Overlay connected to server.").then(() => {
 				`Adding audio track to source stream (${type}): `,
 				audioTrack,
 			);
+			if (type === "camera") {
+				audioTrack.setMuted(soundState.microphoneMuted);
+			}
 		}
 		source.stream = stream;
 		const videoElement = document.getElementById(type);
@@ -175,6 +255,17 @@ const audioManager = AudioManager.instance;
 // let nextPart: PartName = currentPart;
 let goToTransition = false;
 let nextScene: Scene | null = null;
+let currentWindowEndTime: number | null = null;
+let overlayConnection: ReturnType<typeof ConnectionManager.init> | null = null;
+
+function sendMusicSync(windowEndTime: number | null, pending: Scene | null) {
+	currentWindowEndTime = windowEndTime;
+	overlayConnection?.sendMessage({
+		type: "musicSyncUpdate",
+		windowEndTime,
+		pendingScene: pending,
+	});
+}
 const chorusStartMargin = 0.173349057; // am(Ardour mesure)=1920; start=1773; bpm=106; val=((am−start)÷am) * 4 * (60 / bpm)
 const chorusEndMargin = 0.009433962; // am(Ardour mesure)=1920; start=8; bpm=106; val=(start÷am) * 4 * (60 / bpm)
 const chorusDuration = (2 * 4 * 60) / 106; // deux mesures de 4 temps
@@ -188,38 +279,43 @@ const partNames = [
 export type PartName = (typeof partNames)[number];
 
 async function initBassLoop() {
-	const music = new Music();
-	const bassSoundTrack = new MusicTrack(music);
-	const guitarSoundTrack = new MusicTrack(music);
-
-	const bassBase = await bassSoundTrack.addPart("/data/sound/bass-couplet.mp3", 2);
-	// const base = await bassSoundTrack.addPart("/data/sound/bass-refrain.mp3", 2);
-	// const base2 = await bassSoundTrack.addPart("/data/sound/bass-base2.mp3", 2);
-	const bassChorus = new MusicPartGroup([
-		await bassSoundTrack.addPart("/data/sound/bass-refrain.mp3", 3),
-		await bassSoundTrack.addPart("/data/sound/bass-refrain-fin.mp3", 1),
-	]);
-	// const guitareNotif = await guitarSoundTrack.addPart("/data/sound/guitare-notif.mp3", 1);
-	const guitareChorus = new MusicPartGroup([
-		await guitarSoundTrack.addPart("/data/sound/guitare-refrain.mp3", 3),
-		await guitarSoundTrack.addPart("/data/sound/guitare-refrain-fin.mp3", 1),
-	]);
-
+	const music = new Music(106);
+	music.setMuted(soundState.musicMuted);
+	const bassSoundTrack = new MusicTrack(music, "Bass");
+	const guitarSoundTrack = new MusicTrack(music, "Guitare");
+	const bassBase = await bassSoundTrack.addPart(
+		"/data/sound/bass-couplet.mp3",
+		2,
+	);
+	// Track unique pour toutes les notifications (chat et abonnement) : pas de lecture simultanée
+	const notifTrack = new MusicTrack(music, "Notif");
+	chatNotifPart = await notifTrack.addPart("/data/sound/guitare-notif.mp3");
+	subscriptionSoloPart = await notifTrack.addPart(
+		"/data/sound/guitare-solo-1.mp3",
+	);
+	const chorus = new MusicPart(
+		new MusicPartGroup(
+			await bassSoundTrack.addPart("/data/sound/bass-refrain.mp3", 3),
+			await bassSoundTrack.addPart("/data/sound/bass-refrain-fin.mp3"),
+		),
+		new MusicPartGroup(
+			await guitarSoundTrack.addPart("/data/sound/guitare-refrain.mp3", 3),
+			await guitarSoundTrack.addPart("/data/sound/guitare-refrain-fin.mp3"),
+		),
+	);
 	bassBase.onended = () => {
-		let nextPart: IMusicTrackPart;
 		if (goToTransition) {
 			goToTransition = false;
 			applyScene("transition");
-			nextPart = bassChorus;
-			// guitareChorus.start();
+			const chorusEndDate = chorus.start();
+			sendMusicSync(chorusEndDate.getTime(), nextScene);
 		} else {
 			applyNextSceneIfNeeded();
-			// nextPart = Math.random() < 0.2 ? base2 : base;
-			nextPart = bassBase;
+			// const endDate = Math.random() < 0.2 ? base2.start() : base.start();
+			const endDate = bassBase.start();
+			sendMusicSync(endDate.getTime(), nextScene);
 		}
-		nextPart.start();
 	};
-
 	// base2.onended = () => {
 	// 	let nextPart: IMusicTrackPart;
 	// 	if (goToTransition) {
@@ -232,13 +328,13 @@ async function initBassLoop() {
 	// 	}
 	// 	nextPart.start();
 	// };
-
-	bassChorus.onended = () => {
+	chorus.onended = () => {
 		applyNextSceneIfNeeded();
-		bassBase.start();
+		const endDate = bassBase.start();
+		sendMusicSync(endDate.getTime(), nextScene);
 	};
-
-	bassBase.start();
+	const endDate = bassBase.start();
+	sendMusicSync(endDate.getTime(), nextScene);
 }
 
 function applyNextSceneIfNeeded() {

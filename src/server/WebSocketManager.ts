@@ -1,10 +1,58 @@
 import type { ServerWebSocket } from "bun";
-import type { ClientType, Scene, StreamSource, WSMessage } from "../types.ts";
+import type {
+	ClientType,
+	Scene,
+	StreamSource,
+	TwitchEvent,
+	WSMessage,
+} from "../types.ts";
+import type { TwitchClient } from "./TwitchClient.ts";
+import type { ChatMessage } from "@twurple/chat";
+
+type State = {
+	scene: Scene;
+	interfaceHidden: boolean;
+	microphoneMuted: boolean;
+	musicMuted: boolean;
+};
 
 export class WebSocketManager {
 	private readonly admins: AdminClient[] = [];
-	private overlay: ServerWebSocket<undefined> | null = null;
-	private currentScene: Scene = "start";
+	private overlay: WsClient | null = null;
+	private state: State = {
+		scene: "start",
+		interfaceHidden: false,
+		microphoneMuted: false,
+		musicMuted: false,
+	};
+	private readonly pendingEvents: TwitchEvent[] = [];
+
+	constructor(private readonly twitchClient: TwitchClient) {
+		twitchClient.onChatMessage = (message: ChatMessage) => {
+			console.log(
+				"Received Twitch chat message in WebSocketManager: ",
+				message.text,
+			);
+			// TODO: First user message: message.isFirst
+			this.onTwitchEvent({
+				type: "chatMessage",
+				// username: message.userInfo.displayName,
+				// message: message.text,
+			});
+		};
+		twitchClient.onChannelEvent = this.onTwitchEvent.bind(this);
+		twitchClient.onNewSubscription = () => {
+			this.onTwitchEvent({ type: "newSubscription" });
+		};
+	}
+
+	private onTwitchEvent(event: TwitchEvent) {
+		if (this.overlay?.isOpen) {
+			this.overlay.send(event);
+		} else {
+			this.pendingEvents.push(event);
+		}
+	}
 
 	public register(ws: ServerWebSocket<undefined>, type: ClientType): boolean {
 		switch (type) {
@@ -19,8 +67,26 @@ export class WebSocketManager {
 	}
 
 	public registerAdmin(ws: ServerWebSocket<undefined>) {
-		this.admins.push(new AdminClient(ws));
-		ws.send(JSON.stringify({ type: "setScene", scene: this.currentScene }));
+		const client = new AdminClient(ws);
+		this.admins.push(client);
+		client.send({ type: "setScene", scene: this.state.scene });
+		client.send({ type: "hideInterface", hidden: this.state.interfaceHidden });
+		client.send({
+			type: "setSoundMuted",
+			input: "microphone",
+			muted: this.state.microphoneMuted,
+		});
+		client.send({
+			type: "setSoundMuted",
+			input: "music",
+			muted: this.state.musicMuted,
+		});
+		if (this.twitchClient.needsAuth) {
+			client.send({
+				type: "twitchAuthRequired",
+				params: this.twitchClient.createAuthUrlParameters(),
+			});
+		}
 	}
 
 	public registerOverlay(ws: ServerWebSocket<undefined>) {
@@ -31,15 +97,36 @@ export class WebSocketManager {
 			ws.close(1000, "An overlay is already connected.");
 			return;
 		}
-		this.overlay = ws;
+		this.overlay = new WsClient(ws);
 		this.admins
 			.flatMap((admin) => admin.sources)
 			.forEach((source) => {
-				ws.send(JSON.stringify({ type: "newSource", source }));
+				this.overlay?.send({ type: "newSource", source });
 			});
-		ws.send(JSON.stringify({ type: "setScene", scene: this.currentScene }));
+		this.overlay.send({ type: "setScene", scene: this.state.scene });
+		this.overlay.send({ type: "hideInterface", hidden: this.state.interfaceHidden });
+		this.overlay.send({
+			type: "setSoundMuted",
+			input: "microphone",
+			muted: this.state.microphoneMuted,
+		});
+		this.overlay.send({
+			type: "setSoundMuted",
+			input: "music",
+			muted: this.state.musicMuted,
+		});
+		while (this.pendingEvents.length > 0) {
+			const event = this.pendingEvents.shift();
+			if (!event) {
+				console.warn(
+					"No event found in pendingEvents when trying to send to new overlay.",
+				);
+				continue;
+			}
+			this.overlay.send(event);
+		}
 		for (const admin of this.admins) {
-			admin.socket.send(JSON.stringify({ type: "newOverlay" }));
+			admin.send({ type: "newOverlay" });
 		}
 	}
 
@@ -54,7 +141,11 @@ export class WebSocketManager {
 		}
 		console.log("Forwarding message", message);
 		const adminIndex = this.adminIndex(ws);
-		if (this.overlay === ws) {
+		if (this.overlay?.socket === ws) {
+			if (message.type === "setScene") {
+				this.state.scene = message.scene;
+				console.log("Updated scene from overlay to", this.state.scene);
+			}
 			// Forward the message to all admins
 			for (const admin of this.admins) {
 				if (admin.socket.readyState === WebSocket.OPEN) {
@@ -63,33 +154,67 @@ export class WebSocketManager {
 			}
 			console.log("Forwarded message to admins");
 		} else if (adminIndex >= 0) {
-			const admin = this.admins[adminIndex];
+			const currentAdmin = this.admins[adminIndex];
+			let dispatchToAdmins = false;
 			switch (message.type) {
 				case "setScene":
-					this.currentScene = message.scene;
-					console.log("Updated current scene to", this.currentScene);
+					this.state.scene = message.scene;
+					dispatchToAdmins = true;
+					console.log("Updated current scene to", this.state.scene);
+					break;
+				case "hideInterface":
+					this.state.interfaceHidden = message.hidden;
+					dispatchToAdmins = true;
+					console.log(
+						"Updated interface hidden state to",
+						this.state.interfaceHidden,
+					);
+					break;
+				case "setSoundMuted":
+					if (message.input === "microphone") {
+						this.state.microphoneMuted = message.muted;
+						console.log(
+							"Updated microphone muted state to",
+							this.state.microphoneMuted,
+						);
+					} else if (message.input === "music") {
+						this.state.musicMuted = message.muted;
+						console.log("Updated music muted state to", this.state.musicMuted);
+					}
+					dispatchToAdmins = true;
 					break;
 				case "newSource":
 					console.log(
 						"Received new source from admin",
-						admin.socket,
+						currentAdmin.socket,
 						message.source,
 					);
-					admin.sources.push(message.source);
+					currentAdmin.sources.push(message.source);
 					break;
 			}
-			// Forward the message to all overlays
-			if (this.overlay?.readyState === WebSocket.OPEN) {
-				this.overlay?.send(messageData);
+			// Forward the message to the overlay
+			if (this.overlay?.isOpen) {
+				this.overlay?.send(message);
 			}
-			console.log("Forwarded message to overlays");
+			console.log("Forwarded message to overlay");
+			if (dispatchToAdmins) {
+				for (const admin of this.admins) {
+					if (
+						admin !== currentAdmin &&
+						admin.socket.readyState === WebSocket.OPEN
+					) {
+						admin.send(message);
+					}
+				}
+				console.log("Forwarded message to other admins");
+			}
 		} else {
 			console.log("Unregistered connection sent a message");
 		}
 	}
 
 	public onClose(ws: ServerWebSocket<undefined>) {
-		if (this.overlay === ws) {
+		if (this.overlay?.socket === ws) {
 			this.overlay = null;
 			return;
 		}
@@ -106,10 +231,23 @@ export class WebSocketManager {
 	}
 }
 
-class AdminClient {
+class WsClient {
 	public readonly socket: ServerWebSocket<undefined>;
-	public readonly sources: StreamSource[] = [];
 	constructor(socket: ServerWebSocket<undefined>) {
 		this.socket = socket;
 	}
+
+	get isOpen() {
+		return this.socket.readyState === WebSocket.OPEN;
+	}
+
+	send(message: WSMessage) {
+		if (this.socket.readyState === WebSocket.OPEN) {
+			this.socket.send(JSON.stringify(message));
+		}
+	}
+}
+
+class AdminClient extends WsClient {
+	public readonly sources: StreamSource[] = [];
 }

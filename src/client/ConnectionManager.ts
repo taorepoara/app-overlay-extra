@@ -77,7 +77,9 @@ export class ConnectionManager {
 		console.log("Initializing WebSocket connection to server...");
 		return new Promise((resolve, reject) => {
 			// Replace with your server URL
-			const serverUrl = `ws${location.protocol.includes("https") ? "s" : ""}://${location.host}/ws`;
+			const serverUrl = import.meta.env.DEV
+				? `ws://${location.hostname}:3001/ws`
+				: `ws${location.protocol.includes("https") ? "s" : ""}://${location.host}/ws`;
 			this.webSocket = new WebSocket(serverUrl);
 
 			this.webSocket.onopen = () => {

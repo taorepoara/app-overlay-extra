@@ -17,13 +17,12 @@ export default defineConfig({
 		host: true,
 		allowedHosts: true,
 		proxy: {
-			"/ws": {
-				target: "ws://localhost:3001",
-				ws: true,
-			},
 			"/data/": {
 				target: "http://localhost:3001"
 			},
+			"/redirect": {
+				target: "http://localhost:3001"
+			}
 		},
 	},
 });

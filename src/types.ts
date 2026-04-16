@@ -3,9 +3,18 @@ export type WSMessage =
 	| RTCConnectionMessage
 	| AppMessage;
 
-export type AppMessage = SetSceneMessage | NewSourceMessage;
+export type AppMessage =
+	| SetSceneMessage
+	| HideInterfaceMessage
+	| SetSoundMutedMessage
+	| NewSourceMessage
+	| TwitchAuthRequiredMessage
+	| TwitchEvent
+	| MusicSyncUpdateMessage
+	| CancelTransitionMessage;
 
 export type ClientType = "admin" | "overlay";
+export type SoundInput = "microphone" | "music";
 
 export type ConnectClientMessage = {
 	type: "connectClient";
@@ -21,6 +30,17 @@ export type SetSceneMessage = {
 	scene: Scene;
 };
 
+export type HideInterfaceMessage = {
+	type: "hideInterface";
+	hidden: boolean;
+};
+
+export type SetSoundMutedMessage = {
+	type: "setSoundMuted";
+	input: SoundInput;
+	muted: boolean;
+};
+
 export type StreamSource = {
 	type: StreamType;
 	trackIds: string[];
@@ -29,6 +49,11 @@ export type StreamSource = {
 export type NewSourceMessage = {
 	type: "newSource";
 	source: StreamSource;
+};
+
+export type TwitchAuthRequiredMessage = {
+	type: "twitchAuthRequired";
+	params: Record<string, string>;
 };
 
 export type RTCConnectionMessage =
@@ -63,3 +88,46 @@ export const scenes = [
 export type Scene = (typeof scenes)[number];
 
 export type StreamType = "camera" | "screen";
+
+export type TwitchEvent = TwitchChatMessageEvent | TwitchChannelEvent;
+
+export type TwitchChatMessageEvent = {
+	type: "chatMessage";
+	// username: string;
+	// message: string;
+};
+
+export type TwitchChannelEvent =
+	| FollowerNumberEvent
+	| SubscriptionNumberEvent
+	| ViewerCountEvent
+	| NewSubscriptionEvent;
+
+export type FollowerNumberEvent = {
+	type: "followerNumber";
+	count: number;
+};
+
+export type SubscriptionNumberEvent = {
+	type: "subscriptionNumber";
+	count: number;
+};
+
+export type ViewerCountEvent = {
+	type: "viewerCount";
+	count: number;
+};
+
+export type NewSubscriptionEvent = {
+	type: "newSubscription";
+};
+
+export type MusicSyncUpdateMessage = {
+	type: "musicSyncUpdate";
+	windowEndTime: number | null;
+	pendingScene: Scene | null;
+};
+
+export type CancelTransitionMessage = {
+	type: "cancelTransition";
+};

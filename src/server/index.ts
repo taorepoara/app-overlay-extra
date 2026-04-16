@@ -1,7 +1,9 @@
 import { argv } from "bun";
 import { WebSocketManager } from "./WebSocketManager.ts";
+import { TwitchClient } from "./TwitchClient.ts";
 
-const sockerManager = new WebSocketManager();
+const twitchClient = new TwitchClient();
+const sockerManager = new WebSocketManager(twitchClient);
 
 const server = Bun.serve({
 	port: argv[2] ? Number.parseInt(argv[2]) : 3000,
@@ -11,9 +13,16 @@ const server = Bun.serve({
 		if (path === "/ws") {
 			const upgraded = server.upgrade(req);
 			if (upgraded) {
-				// return;
+				return;
 			}
 			return new Response("Upgrade Required", { status: 426 });
+		}
+		console.log("Received request for path:", path);
+		// Twitch auto redirection
+		if (path==="/redirect") {
+			const params = url.searchParams;
+			await twitchClient.finalizeAuth(params);
+			return Response.redirect("/admin.html");
 		}
 		if (path === "/" || path === "") {
 			path = "/index.html";

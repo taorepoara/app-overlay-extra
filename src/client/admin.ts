@@ -1,14 +1,57 @@
 import {
 	ConnectionManager,
-	scenes,
 	type Scene,
 	type StreamType,
+	scenes,
 } from "./ConnectionManager.js";
 import "./admin.css";
+import { confirmModal } from "./common.js";
 
 console.log("Admin script loaded");
 
 const streams: Map<StreamType, MediaStream> = new Map();
+
+type MusicSyncState = {
+	windowEndTime: number | null;
+	pendingScene: string | null;
+};
+let musicSyncState: MusicSyncState = {
+	windowEndTime: null,
+	pendingScene: null,
+};
+let countdownInterval: ReturnType<typeof setInterval> | null = null;
+
+function updateMusicSyncDisplay() {
+	const countdownEl = document.getElementById(
+		"music-countdown",
+	) as HTMLElement | null;
+	const cancelBtn = document.getElementById(
+		"cancel-transition",
+	) as HTMLButtonElement | null;
+	if (!countdownEl) return;
+
+	const { windowEndTime, pendingScene } = musicSyncState;
+
+	if (windowEndTime === null) {
+		countdownEl.textContent = "Transition en cours…";
+		countdownEl.dataset.state = "transition";
+		if (cancelBtn) cancelBtn.hidden = true;
+		return;
+	}
+
+	const remaining = Math.max(0, windowEndTime - Date.now());
+	const seconds = (remaining / 1000).toFixed(1);
+
+	if (pendingScene) {
+		countdownEl.textContent = `→ ${pendingScene} dans ${seconds}s`;
+		countdownEl.dataset.state = "pending";
+		if (cancelBtn) cancelBtn.hidden = false;
+	} else {
+		countdownEl.textContent = `Fenêtre dans ${seconds}s`;
+		countdownEl.dataset.state = "idle";
+		if (cancelBtn) cancelBtn.hidden = true;
+	}
+}
 
 const permissions = [
 	"microphone",
@@ -40,6 +83,44 @@ const connectionManager = ConnectionManager.init("admin", async (message) => {
 		case "setScene":
 			(document.getElementById("scene") as HTMLSelectElement).value =
 				message.scene;
+			break;
+		case "hideInterface":
+			(document.getElementById("hide-interface") as HTMLInputElement).checked =
+				message.hidden;
+			break;
+		case "setSoundMuted":
+			if (message.input === "microphone") {
+				(document.getElementById("mute-mic") as HTMLInputElement).checked =
+					message.muted;
+			} else if (message.input === "music") {
+				(document.getElementById("mute-music") as HTMLInputElement).checked =
+					message.muted;
+			}
+			break;
+		case "twitchAuthRequired":
+			confirmModal("Twitch auth needed. Redirect to authorize page ?").then(
+				(result) => {
+					if (result) {
+						console.log("Start Twitch auth flow");
+						const authorizeParams = new URLSearchParams(message.params);
+						authorizeParams.append(
+							"redirect_uri",
+							`${location.origin}/redirect`,
+						);
+						location.href = `https://id.twitch.tv/oauth2/authorize?${authorizeParams}`;
+					}
+				},
+			);
+			break;
+		case "musicSyncUpdate":
+			musicSyncState = {
+				windowEndTime: message.windowEndTime,
+				pendingScene: message.pendingScene,
+			};
+			updateMusicSyncDisplay();
+			if (countdownInterval === null) {
+				countdownInterval = setInterval(updateMusicSyncDisplay, 100);
+			}
 			break;
 		default:
 			console.warn("Unknown message type received: ", message);
@@ -321,5 +402,47 @@ async function initAdminUI() {
 	) as HTMLButtonElement;
 	shareScreenButton.addEventListener("click", () => {
 		addDeviceShare();
+	});
+
+	const cancelTransitionBtn = document.getElementById(
+		"cancel-transition",
+	) as HTMLButtonElement;
+	cancelTransitionBtn.addEventListener("click", () => {
+		connectionManager.sendMessage({ type: "cancelTransition" });
+	});
+
+	const hideInterfaceCheckbox = document.getElementById(
+		"hide-interface",
+	) as HTMLInputElement;
+	hideInterfaceCheckbox.addEventListener("change", () => {
+		// mute on overlay side
+		connectionManager.sendMessage({
+			type: "hideInterface",
+			hidden: hideInterfaceCheckbox.checked,
+		});
+	});
+
+	const muteMicCheckbox = document.getElementById(
+		"mute-mic",
+	) as HTMLInputElement;
+	muteMicCheckbox.addEventListener("change", () => {
+		// mute on overlay side
+		connectionManager.sendMessage({
+			type: "setSoundMuted",
+			input: "microphone",
+			muted: muteMicCheckbox.checked,
+		});
+	});
+
+	const muteMusicCheckbox = document.getElementById(
+		"mute-music",
+	) as HTMLInputElement;
+	muteMusicCheckbox.addEventListener("change", () => {
+		// mute on overlay side
+		connectionManager.sendMessage({
+			type: "setSoundMuted",
+			input: "music",
+			muted: muteMusicCheckbox.checked,
+		});
 	});
 }
