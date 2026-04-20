@@ -3,6 +3,8 @@ import type {
 	ClientType,
 	Scene,
 	StreamSource,
+	TwitchChannelEvent,
+	TwitchChannelEventType,
 	TwitchEvent,
 	WSMessage,
 } from "../types.ts";
@@ -25,7 +27,8 @@ export class WebSocketManager {
 		microphoneMuted: false,
 		musicMuted: false,
 	};
-	private readonly pendingEvents: TwitchEvent[] = [];
+	private readonly lastEvents: Map<TwitchChannelEventType, TwitchChannelEvent> =
+		new Map();
 
 	constructor(private readonly twitchClient: TwitchClient) {
 		twitchClient.onChatMessage = (message: ChatMessage) => {
@@ -34,11 +37,13 @@ export class WebSocketManager {
 				message.text,
 			);
 			// TODO: First user message: message.isFirst
-			this.onTwitchEvent({
-				type: "chatMessage",
-				// username: message.userInfo.displayName,
-				// message: message.text,
-			});
+			if (this.overlay?.isOpen) {
+				this.overlay.send({
+					type: "chatMessage",
+					// username: message.userInfo.displayName,
+					// message: message.text,
+				});
+			}
 		};
 		twitchClient.onChannelEvent = this.onTwitchEvent.bind(this);
 		twitchClient.onNewSubscription = () => {
@@ -46,12 +51,11 @@ export class WebSocketManager {
 		};
 	}
 
-	private onTwitchEvent(event: TwitchEvent) {
+	private onTwitchEvent(event: TwitchChannelEvent) {
 		if (this.overlay?.isOpen) {
 			this.overlay.send(event);
-		} else {
-			this.pendingEvents.push(event);
 		}
+		this.lastEvents.set(event.type as TwitchChannelEventType, event);
 	}
 
 	public register(ws: ServerWebSocket<undefined>, type: ClientType): boolean {
@@ -104,7 +108,10 @@ export class WebSocketManager {
 				this.overlay?.send({ type: "newSource", source });
 			});
 		this.overlay.send({ type: "setScene", scene: this.state.scene });
-		this.overlay.send({ type: "hideInterface", hidden: this.state.interfaceHidden });
+		this.overlay.send({
+			type: "hideInterface",
+			hidden: this.state.interfaceHidden,
+		});
 		this.overlay.send({
 			type: "setSoundMuted",
 			input: "microphone",
@@ -115,16 +122,9 @@ export class WebSocketManager {
 			input: "music",
 			muted: this.state.musicMuted,
 		});
-		while (this.pendingEvents.length > 0) {
-			const event = this.pendingEvents.shift();
-			if (!event) {
-				console.warn(
-					"No event found in pendingEvents when trying to send to new overlay.",
-				);
-				continue;
-			}
-			this.overlay.send(event);
-		}
+		this.lastEvents.forEach((event) => {
+			this.overlay?.send(event);
+		});
 		for (const admin of this.admins) {
 			admin.send({ type: "newOverlay" });
 		}

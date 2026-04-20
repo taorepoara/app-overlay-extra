@@ -79,6 +79,7 @@ export type AnswerMessage = {
 
 export const scenes = [
 	"start",
+	"pause",
 	"transition",
 	"camera",
 	"screen",
@@ -121,6 +122,8 @@ export type ViewerCountEvent = {
 export type NewSubscriptionEvent = {
 	type: "newSubscription";
 };
+
+export type TwitchChannelEventType = TwitchChannelEvent["type"];
 
 export type MusicSyncUpdateMessage = {
 	type: "musicSyncUpdate";

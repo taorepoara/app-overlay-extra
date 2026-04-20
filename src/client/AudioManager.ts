@@ -98,15 +98,15 @@ abstract class SoundTrack {
 		this.gainNode.gain.cancelScheduledValues(
 			AudioManager.instance.audioContext.currentTime,
 		);
-		const start = this.gainNode.gain.value;
-		const diff = effectiveGain - start;
+		const initial = this.gainNode.gain.value;
+		const diff = effectiveGain - initial;
 		const duration = 0.3;
 		this.gainNode.gain.setValueCurveAtTime(
 			[
-				start,
-				start + (diff * 10) / 100,
-				start + (diff * 50) / 100,
-				start + (diff * 90) / 100,
+				initial,
+				initial + (diff * 10) / 100,
+				initial + (diff * 50) / 100,
+				initial + (diff * 90) / 100,
 				effectiveGain,
 			],
 			AudioManager.instance.audioContext.currentTime,
@@ -157,9 +157,9 @@ export class Music extends SoundTrack {
 		this.tracks.push(track);
 	}
 
-	get nextStartTime() {
+	get nextPlayTime() {
 		return Math.max(
-			...this.tracks.map((track) => track.nextStartTime),
+			...this.tracks.map((track) => track.nextPlayTime),
 			AudioManager.instance.audioContext.currentTime,
 		);
 	}
@@ -168,7 +168,7 @@ export class Music extends SoundTrack {
 export class MusicTrack {
 	public readonly gainNode: GainNode;
 	private readonly parts: MusicTrackPart[] = [];
-	public nextStartTime = 0;
+	public nextPlayTime = 0;
 
 	constructor(
 		readonly music: Music,
@@ -202,7 +202,7 @@ export interface IMusicPart {
 	playing: boolean;
 	duration: number;
 	onended: (() => void) | null;
-	start(time?: number): Date;
+	play(time?: number): Date;
 }
 
 export interface IMusicTrackPart extends IMusicPart {
@@ -241,13 +241,13 @@ export class MusicTrackPart implements IMusicTrackPart {
 		return (this._duration ?? this.buffer.duration) * this.repeat;
 	}
 
-	start(start?: number): Date {
+	play(when?: number): Date {
 		if (this._playing) throw new Error("SoundTrackPart is already playing");
-		console.debug("MusicTrackPart start", this);
+		console.debug("MusicTrackPart play", this);
 		this._playing = true;
-		const startTime = start ?? this.track.nextStartTime;
+		const playTime = when ?? this.track.nextPlayTime;
 		const diff =
-			(startTime - AudioManager.instance.audioContext.currentTime) * 1000;
+			(playTime - AudioManager.instance.audioContext.currentTime) * 1000;
 		const endDate = new Date(
 			Date.now() + diff + this.buffer.duration * 1000 * this.repeat,
 		);
@@ -262,12 +262,12 @@ export class MusicTrackPart implements IMusicTrackPart {
 				this.source.loopEnd = (this.offset ?? 0) + this.duration;
 			}
 			this.source.connect(this.track.gainNode);
-			this.source.start(startTime, this.offset);
+			this.source.start(playTime, this.offset);
 		} else {
 			console.debug("SoundTrackPart continue", this);
 			this.source.loop = true;
 		}
-		this.track.nextStartTime = startTime + this.buffer.duration * this.repeat;
+		this.track.nextPlayTime = playTime + this.buffer.duration * this.repeat;
 
 		setTimeout(
 			() => {
@@ -319,11 +319,11 @@ export class MusicPartGroup implements IMusicTrackPart {
 	get duration(): number {
 		return this.parts.reduce((sum, part) => sum + part.duration, 0);
 	}
-	start(time?: number): Date {
+	play(time?: number): Date {
 		if (this.currentPartIndex >= 0)
 			throw new Error("MusicPartGroup is already playing");
 
-		console.debug("MusicPartGroup start", this);
+		console.debug("MusicPartGroup play", this);
 		this.currentPartIndex = 0;
 		const firstPartEnd = this.playNextPart(time).getTime();
 		const endDate = new Date(
@@ -347,7 +347,7 @@ export class MusicPartGroup implements IMusicTrackPart {
 				this.onended?.();
 			}
 		};
-		return nextPart.start(time);
+		return nextPart.play(time);
 	}
 }
 
@@ -396,13 +396,13 @@ export class MusicPart implements IMusicPart {
 		});
 	}
 
-	start(time?: number): Date {
-		console.debug("MusicPart start", this);
-		const startTime =
-			time ?? Math.max(...this.trackParts.map((t) => t.track.nextStartTime));
+	play(time?: number): Date {
+		console.debug("MusicPart play", this);
+		const playTime =
+			time ?? Math.max(...this.trackParts.map((t) => t.track.nextPlayTime));
 		return new Date(
 			Math.max(
-				...this.trackParts.map((trackPart) => trackPart.start(startTime).getTime()),
+				...this.trackParts.map((trackPart) => trackPart.play(playTime).getTime()),
 			),
 		);
 	}

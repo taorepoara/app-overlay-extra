@@ -1,3 +1,4 @@
+import transitionLogoUrl from "./img/logo/lenra_logo_animated.svg?url";
 import {
 	AudioManager,
 	AudioStreamTrack,
@@ -21,7 +22,7 @@ import "./css/header.css";
 import "./overlay.css";
 
 console.log("Admin script loaded");
-const offScenes = ["start", "end"] as Scene[];
+const offScenes = ["start", "pause", "end"] as Scene[];
 const soundState = {
 	microphoneMuted: false,
 	musicMuted: false,
@@ -110,14 +111,14 @@ alertModal("Overlay connected to server.").then(() => {
 							now - lastChatNotifTime >= CHAT_NOTIF_COOLDOWN_MS)
 					) {
 						lastChatNotifTime = now;
-						chatNotifPart.start(chatNotifPart.track.music.nextStartTime);
+						chatNotifPart.play(chatNotifPart.track.music.nextPlayTime);
 					}
 					break;
 				}
 				case "newSubscription": {
 					if (subscriptionSoloPart && !subscriptionSoloPart.playing) {
-						subscriptionSoloPart.start(
-							subscriptionSoloPart.track.music.nextStartTime,
+						subscriptionSoloPart.play(
+							subscriptionSoloPart.track.music.nextPlayTime,
 						);
 					}
 					break;
@@ -307,12 +308,12 @@ async function initBassLoop() {
 		if (goToTransition) {
 			goToTransition = false;
 			applyScene("transition");
-			const chorusEndDate = chorus.start();
+			const chorusEndDate = chorus.play();
 			sendMusicSync(chorusEndDate.getTime(), nextScene);
 		} else {
 			applyNextSceneIfNeeded();
 			// const endDate = Math.random() < 0.2 ? base2.start() : base.start();
-			const endDate = bassBase.start();
+			const endDate = bassBase.play();
 			sendMusicSync(endDate.getTime(), nextScene);
 		}
 	};
@@ -330,10 +331,10 @@ async function initBassLoop() {
 	// };
 	chorus.onended = () => {
 		applyNextSceneIfNeeded();
-		const endDate = bassBase.start();
+		const endDate = bassBase.play();
 		sendMusicSync(endDate.getTime(), nextScene);
 	};
-	const endDate = bassBase.start();
+	const endDate = bassBase.play();
 	sendMusicSync(endDate.getTime(), nextScene);
 }
 
@@ -358,6 +359,19 @@ function applyScene(expectedScene?: Scene) {
 	}
 	const scene = expectedScene ?? (main.dataset.scene as Scene);
 	console.log("Scene set to: ", scene);
+
+	const transitionContainer = document.getElementById(
+		"transition-logo-container",
+	);
+	if (transitionContainer) {
+		transitionContainer.innerHTML = "";
+		if (scene === "transition") {
+			const img = document.createElement("img");
+			img.src = transitionLogoUrl;
+			transitionContainer.appendChild(img);
+		}
+	}
+
 	const musicOnly = scene === "transition" || offScenes.includes(scene);
 	main.dataset.previousScene = main.dataset.scene;
 	main.dataset.scene = scene;

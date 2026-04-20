@@ -55,10 +55,10 @@ Features:
 ## Improve style
 
 - [ ] Animation logo Lenra pendant transition
-- [ ] Déplacer les data en bas de l'écran
+- [x] Déplacer les data en bas de l'écran
 - [x] Possibilité de cacher les éléments d'interface via admin
 - [x] Couper le son via admin
 - [x] Couper micro via admin
 - Son:
-  - [ ] Ajouter la guitare
+  - [x] Ajouter la guitare
   - [ ] Ajouter la batterie via [strudel](https://strudel.cc/) (voir https://strudel.cc/technical-manual/project-start/#with-your-own-ui) (banques de son de batterie: https://github.com/geikha/tidal-drum-machines/tree/main/machines)

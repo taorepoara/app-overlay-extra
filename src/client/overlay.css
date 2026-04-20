@@ -175,6 +175,22 @@ main {
 		}
 	}
 
+	> #transition-logo-container {
+		position: absolute;
+		inset: 0;
+		z-index: 20;
+
+		> img {
+			width: 100%;
+			height: 100%;
+			opacity: 1;
+		}
+
+		&:is([data-scene="transition"] *) {
+			opacity: 1;
+		}
+	}
+
 	> p.message {
 		position: absolute;
 		font-size: 4rem;
@@ -188,6 +204,7 @@ main {
 
 		&:is(
 			[data-scene="start"] [data-scene="start"],
+			[data-scene="pause"] [data-scene="pause"],
 			[data-scene="end"] [data-scene="end"]
 		) {
 			opacity: 1;
