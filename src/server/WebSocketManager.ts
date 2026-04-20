@@ -1,3 +1,4 @@
+import type { ChatMessage } from "@twurple/chat";
 import type { ServerWebSocket } from "bun";
 import type {
 	ClientType,
@@ -6,10 +7,10 @@ import type {
 	TwitchChannelEvent,
 	TwitchChannelEventType,
 	TwitchEvent,
+	UpcomingStream,
 	WSMessage,
 } from "../types.ts";
-import type { TwitchClient } from "./TwitchClient.ts";
-import type { ChatMessage } from "@twurple/chat";
+import type { TwitchClient, TwitchLive } from "./TwitchClient.ts";
 
 type State = {
 	scene: Scene;
@@ -48,6 +49,11 @@ export class WebSocketManager {
 		twitchClient.onChannelEvent = this.onTwitchEvent.bind(this);
 		twitchClient.onNewSubscription = () => {
 			this.onTwitchEvent({ type: "newSubscription" });
+		};
+		twitchClient.onAuthComplete = () => {
+			for (const admin of this.admins) {
+				this.sendScheduleToAdmin(admin);
+			}
 		};
 	}
 
@@ -90,7 +96,54 @@ export class WebSocketManager {
 				type: "twitchAuthRequired",
 				params: this.twitchClient.createAuthUrlParameters(),
 			});
+		} else {
+			this.sendScheduleToAdmin(client);
 		}
+	}
+
+	private sendScheduleToAdmin(client: AdminClient) {
+		this.twitchClient
+			.getUpcomingStream()
+			.then(async (upcomingStream) => {
+				const payload: UpcomingStream | null = upcomingStream
+					? {
+							title: upcomingStream.title,
+							categoryName: upcomingStream.categoryName,
+							tags: upcomingStream.tags,
+							startDate: upcomingStream.startDate.toISOString(),
+							endDate: upcomingStream.endDate.toISOString(),
+						}
+					: null;
+				let autoApplied = false;
+				if (
+					upcomingStream &&
+					WebSocketManager.isWithinOneHour(upcomingStream.startDate)
+				) {
+					await this.twitchClient
+						.updateChannelInfo(upcomingStream)
+						.then(() => {
+							autoApplied = true;
+						})
+						.catch((err) => {
+							console.error(
+								"Failed to auto-apply stream info from schedule:",
+								err,
+							);
+						});
+				}
+				client.send({
+					type: "twitchSchedule",
+					upcomingStream: payload,
+					autoApplied,
+				});
+			})
+			.catch((err) => {
+				console.error("Failed to fetch Twitch schedule:", err);
+			});
+	}
+
+	private static isWithinOneHour(date: Date): boolean {
+		return date.getTime() - Date.now() < 60 * 60 * 1000;
 	}
 
 	public registerOverlay(ws: ServerWebSocket<undefined>) {
@@ -191,6 +244,39 @@ export class WebSocketManager {
 					);
 					currentAdmin.sources.push(message.source);
 					break;
+				case "updateStreamInfo": {
+					const { title, categoryName, tags, startDate, endDate } = message;
+					const startDateObj = new Date(startDate);
+					const endDateObj = new Date(endDate);
+					const twitchLive:TwitchLive = {
+								title,
+								categoryName: categoryName,
+								tags,
+								startDate: startDateObj,
+								endDate: endDateObj,
+							};
+					this.twitchClient.createScheduleSegment(twitchLive)
+						.then(async () => {
+							if (WebSocketManager.isWithinOneHour(startDateObj)) {
+								await this.twitchClient.updateChannelInfo(twitchLive);
+							}
+							currentAdmin.send({
+								type: "updateStreamInfoResult",
+								success: true,
+								applied: WebSocketManager.isWithinOneHour(startDateObj),
+							});
+						})
+						.catch((err) => {
+							console.error("Failed to update stream info:", err);
+							currentAdmin.send({
+								type: "updateStreamInfoResult",
+								success: false,
+								error: err instanceof Error ? err.message : String(err),
+							});
+							throw err;
+						});
+					return;
+				}
 			}
 			// Forward the message to the overlay
 			if (this.overlay?.isOpen) {

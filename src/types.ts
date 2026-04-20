@@ -10,6 +10,9 @@ export type AppMessage =
 	| NewSourceMessage
 	| TwitchAuthRequiredMessage
 	| TwitchEvent
+	| TwitchScheduleMessage
+	| UpdateStreamInfoMessage
+	| UpdateStreamInfoResultMessage
 	| MusicSyncUpdateMessage
 	| CancelTransitionMessage;
 
@@ -133,4 +136,34 @@ export type MusicSyncUpdateMessage = {
 
 export type CancelTransitionMessage = {
 	type: "cancelTransition";
+};
+
+export type UpcomingStream = {
+	title: string;
+	tags: string[];
+	categoryName: string;
+	startDate: string;
+	endDate: string;
+};
+
+export type TwitchScheduleMessage = {
+	type: "twitchSchedule";
+	upcomingStream: UpcomingStream | null;
+	autoApplied: boolean;
+};
+
+export type UpdateStreamInfoMessage = {
+	type: "updateStreamInfo";
+	title: string;
+	categoryName: string;
+	tags: string[];
+	startDate: string;
+	endDate: string;
+};
+
+export type UpdateStreamInfoResultMessage = {
+	type: "updateStreamInfoResult";
+	success: boolean;
+	applied?: boolean;
+	error?: string;
 };

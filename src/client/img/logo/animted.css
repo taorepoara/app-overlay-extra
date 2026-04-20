@@ -1,0 +1,335 @@
+@font-face {
+	font-family: "Source Sans Pro";
+	font-style: normal;
+	font-weight: normal;
+	font-display: swap;
+	src: url("../../fonts/source-sans-pro-regular.eot");
+	src: local(""), url("../../fonts/source-sans-pro-regular.eot?#iefix") format("embedded-opentype"), url("../../fonts/source-sans-pro-regular.woff2") format("woff2"), url("../../fonts/source-sans-pro-regular.woff") format("woff"),
+		url("../../fonts/source-sans-pro-regular.ttf") format("truetype"),
+		url("../../fonts/source-sans-pro-regular.svg#SourceSansPro") format("svg");
+}
+
+@font-face {
+	font-family: "Source Sans Pro";
+	font-style: normal;
+	font-weight: 600;
+	font-display: swap;
+	src: url("../../fonts/source-sans-pro-600.eot");
+	src: local(""), url("../../fonts/source-sans-pro-600.eot?#iefix") format("embedded-opentype"), url("../../fonts/source-sans-pro-600.woff2") format("woff2"), url("../../fonts/source-sans-pro-600.woff") format("woff"),
+		url("../../fonts/source-sans-pro-600.ttf") format("truetype"),
+		url("../../fonts/source-sans-pro-600.svg#SourceSansPro") format("svg");
+}
+
+@font-face {
+	font-family: "Source Sans Pro";
+	font-style: normal;
+	font-weight: 700;
+	font-display: swap;
+	src: url("../../fonts/source-sans-pro-700.eot");
+	src: local(""), url("../../fonts/source-sans-pro-700.eot?#iefix") format("embedded-opentype"), url("../../fonts/source-sans-pro-700.woff2") format("woff2"), url("../../fonts/source-sans-pro-700.woff") format("woff"),
+		url("../../fonts/source-sans-pro-700.ttf") format("truetype"),
+		url("../../fonts/source-sans-pro-700.svg#SourceSansPro") format("svg");
+}
+
+text {
+	/* Specify the system or custom font to use */
+	font-family: "Source Sans Pro", sans-serif;
+}
+
+#animelogo-white-v4-logo_to {
+	animation: animelogo-white-v4-logo_to__to 1s ease-in-out 3500ms normal forwards
+}
+
+@keyframes animelogo-white-v4-logo_to__to {
+	0% {
+		transform: translate(960px, 541.403261px)
+	}
+
+	100% {
+		transform: translate(595.71896px, 541.403235px)
+	}
+}
+
+#animelogo-white-v4-logo_ts {
+	animation: animelogo-white-v4-logo_ts__ts 1s ease-in-out 3500ms normal forwards
+}
+
+@keyframes animelogo-white-v4-logo_ts__ts {
+	0% {
+		transform: scale(0.831093, 0.831093)
+	}
+
+	100% {
+		transform: scale(0.5, 0.5)
+	}
+}
+
+#animelogo-white-v4-bleu_to {
+	animation: animelogo-white-v4-bleu_to__to 400ms cubic-bezier(.73, 0, .85, .42) 2100ms normal forwards
+}
+
+@keyframes animelogo-white-v4-bleu_to__to {
+	0% {
+		transform: translate(138.489994px, 349.183894px)
+	}
+
+	100% {
+		transform: translate(391.085495px, 443.769989px)
+	}
+}
+
+#animelogo-white-v4-bleu {
+	animation: animelogo-white-v4-bleu_c_o 400ms cubic-bezier(.73, 0, .85, .42) 2100ms normal forwards
+}
+
+@keyframes animelogo-white-v4-bleu_c_o {
+	0% {
+		opacity: 0
+	}
+
+	100% {
+		opacity: 1
+	}
+}
+
+#animelogo-white-v4-rouge_to {
+	animation: animelogo-white-v4-rouge_to__to 400ms cubic-bezier(.73, 0, .85, .42) 2100ms normal forwards
+}
+
+@keyframes animelogo-white-v4-rouge_to__to {
+	0% {
+		transform: translate(704.293559px, 314.34355px)
+	}
+
+	100% {
+		transform: translate(558.831985px, 443.769989px)
+	}
+}
+
+#animelogo-white-v4-rouge {
+	animation: animelogo-white-v4-rouge_c_o 400ms cubic-bezier(.73, 0, .85, .42) 2100ms normal forwards
+}
+
+@keyframes animelogo-white-v4-rouge_c_o {
+	0% {
+		opacity: 0
+	}
+
+	100% {
+		opacity: 1
+	}
+}
+
+#animelogo-white-v4-jaune_to {
+	animation: animelogo-white-v4-jaune_to__to 400ms cubic-bezier(.73, 0, .85, .42) 2100ms normal forwards
+}
+
+@keyframes animelogo-white-v4-jaune_to__to {
+	0% {
+		transform: translate(137.515003px, 776.985284px)
+	}
+
+	100% {
+		transform: translate(390.109994px, 623.769989px)
+	}
+}
+
+#animelogo-white-v4-jaune {
+	animation: animelogo-white-v4-jaune_c_o 400ms cubic-bezier(.73, 0, .85, .42) 2100ms normal forwards
+}
+
+@keyframes animelogo-white-v4-jaune_c_o {
+	0% {
+		opacity: 0
+	}
+
+	100% {
+		opacity: 1
+	}
+}
+
+#animelogo-white-v4-vert_to {
+	animation: animelogo-white-v4-vert_to__to 400ms cubic-bezier(.73, 0, .85, .42) 2100ms normal forwards
+}
+
+@keyframes animelogo-white-v4-vert_to__to {
+	0% {
+		transform: translate(703.318569px, 776.985284px)
+	}
+
+	100% {
+		transform: translate(557.856995px, 623.769989px)
+	}
+}
+
+#animelogo-white-v4-vert {
+	animation: animelogo-white-v4-vert_c_o 400ms cubic-bezier(.73, 0, .85, .42) 2100ms normal forwards
+}
+
+@keyframes animelogo-white-v4-vert_c_o {
+	0% {
+		opacity: 0
+	}
+
+	100% {
+		opacity: 1
+	}
+}
+
+#animelogo-white-v4-centre_ts {
+	animation: animelogo-white-v4-centre_ts__ts 1000ms ease-in-out 2400ms normal forwards
+}
+
+@keyframes animelogo-white-v4-centre_ts__ts {
+	0% {
+		transform: translate(476.667007px, 528.603012px) scale(0, 0)
+	}
+
+	40% {
+		transform: translate(476.667007px, 528.603012px) scale(1, 1)
+	}
+
+	70% {
+		transform: translate(476.667007px, 528.603012px) scale(1, 1)
+	}
+
+	80% {
+		transform: translate(476.667007px, 528.603012px) scale(0.85, 0.85)
+	}
+
+	90% {
+		transform: translate(476.667007px, 528.603012px) scale(1, 1)
+	}
+
+	100% {
+		transform: translate(476.667007px, 528.603012px) scale(1, 1)
+	}
+}
+
+#animelogo-white-v4-centre {
+	animation: animelogo-white-v4-centre_op 500ms ease-in 2400ms normal forwards
+}
+
+@keyframes animelogo-white-v4-centre_op {
+	0% {
+		opacity: 0
+	}
+
+	100% {
+		opacity: 1
+	}
+}
+
+#animelogo-white-v4-lenra_to {
+	animation: animelogo-white-v4-lenra_to__to 1s ease-in-out 3500ms normal forwards
+}
+
+@keyframes animelogo-white-v4-lenra_to__to {
+	0% {
+		transform: translate(1550.386455px, 541.403235px)
+	}
+
+	100% {
+		transform: translate(1073.81973px, 535.173235px)
+	}
+}
+
+#animelogo-white-v4-lenra {
+	animation: animelogo-white-v4-lenra_op 1s ease-in 3500ms normal forwards
+}
+
+@keyframes animelogo-white-v4-lenra_op {
+	0% {
+		opacity: 0
+	}
+
+	100% {
+		opacity: 1
+	}
+}
+
+#animelogo-white-v4-catchphrase {
+	animation: animelogo-white-v4-catchphrase_c_o 1s linear 4500ms normal forwards
+}
+
+@keyframes animelogo-white-v4-catchphrase_c_o {
+	0% {
+		opacity: 0
+	}
+
+	100% {
+		opacity: 1
+	}
+}
+
+#animelogo-white-v4-shield {
+	animation: animelogo-white-v4-shield_c_o 400ms linear 1400ms normal forwards
+}
+
+@keyframes animelogo-white-v4-shield_c_o {
+	0% {
+		opacity: 0
+	}
+
+	25% {
+		opacity: 1
+	}
+
+	100% {
+		opacity: 0
+	}
+}
+
+#animelogo-white-v4-cross {
+	animation: animelogo-white-v4-cross_c_o 400ms linear 200ms normal forwards
+}
+
+@keyframes animelogo-white-v4-cross_c_o {
+	0% {
+		opacity: 0
+	}
+
+	25% {
+		opacity: 1
+	}
+
+	100% {
+		opacity: 0
+	}
+}
+
+#animelogo-white-v4-server {
+	animation: animelogo-white-v4-server_c_o 400ms linear 600ms normal forwards
+}
+
+@keyframes animelogo-white-v4-server_c_o {
+	0% {
+		opacity: 0
+	}
+
+	25% {
+		opacity: 1
+	}
+
+	100% {
+		opacity: 0
+	}
+}
+
+#animelogo-white-v4-data {
+	animation: animelogo-white-v4-data_c_o 400ms linear 1s normal forwards
+}
+
+@keyframes animelogo-white-v4-data_c_o {
+	0% {
+		opacity: 0
+	}
+
+	25% {
+		opacity: 1
+	}
+
+	100% {
+		opacity: 0
+	}
+}

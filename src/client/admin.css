@@ -32,15 +32,72 @@ video {
 	background-color: black;
 }
 
-#share {
 
-	>summary {
+#upcoming-stream {
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+
+	p {
+		margin: 0;
+	}
+}
+
+#stream-info-form {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+
+	p {
+		margin: 0 0 0.25rem;
+		font-style: italic;
+		color: #888;
+	}
+
+	label {
+		display: flex;
+		flex-direction: column;
+		gap: 0.2rem;
+		font-size: 0.85rem;
+
+		input {
+			width: 100%;
+			box-sizing: border-box;
+		}
+	}
+
+	button[type="submit"] {
+		align-self: flex-start;
+		margin-top: 0.25rem;
+	}
+}
+
+#stream-info-status {
+	margin: 0.5rem 0 0;
+	font-size: 0.85rem;
+
+	&[data-state="success"] {
+		color: #4caf50;
+	}
+
+	&[data-state="error"] {
+		color: #f44336;
+	}
+
+	&[data-state="pending"] {
+		color: #888;
+		font-style: italic;
+	}
+}
+
+#share {
+	> summary {
 		font-weight: bold;
 		padding-top: 0.5rem;
 		width: 100%;
 	}
 
-	>ul {
+	> ul {
 		display: flex;
 		flex-direction: row;
 		flex-wrap: wrap;
@@ -48,23 +105,23 @@ video {
 		gap: 1rem;
 		padding: 0;
 
-
-		>li {
+		> li {
 			display: inline-grid;
-			grid-template-areas: "t b"
+			grid-template-areas:
+				"t b"
 				"p p";
 			width: fit-content;
 			justify-self: center;
 
-			>h3 {
+			> h3 {
 				grid-area: t;
 			}
 
-			>video {
+			> video {
 				grid-area: p;
 			}
 
-			>button {
+			> button {
 				grid-area: b;
 				align-self: center;
 				justify-self: end;

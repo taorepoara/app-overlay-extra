@@ -3,6 +3,30 @@ import { RefreshingAuthProvider } from "@twurple/auth";
 import { ChatClient, type ChatMessage } from "@twurple/chat";
 import type { TwitchChannelEvent } from "../types.ts";
 
+const alwaysTags = ["Français", "chatting", "Lenra", "Rediffusion"];
+const defaultGameName = "Just Chatting";
+const titleTagsSeparator = " | ";
+
+export type TwitchLive = {
+	title: string;
+	tags: string[];
+	startDate: Date;
+	endDate: Date;
+} & TwitchCategoryInfo;
+
+type TwitchCategoryInfo =
+	| WithCategoryId
+	| WithCategoryName
+	| (WithCategoryId & WithCategoryName);
+
+type WithCategoryId = {
+	categoryId: string;
+};
+
+type WithCategoryName = {
+	categoryName: string;
+};
+
 // TWITCH_CLIENT_SECRET
 export class TwitchClient {
 	private static readonly channel = "lenra4devs";
@@ -11,6 +35,8 @@ export class TwitchClient {
 		"chat:read",
 		"channel:read:subscriptions",
 		"moderator:read:followers",
+		"channel:manage:schedule",
+		"channel:manage:broadcast",
 	];
 	private static readonly clientId = Bun.env.TWITCH_CLIENT_ID || "";
 	private static readonly clientSecret = Bun.env.TWITCH_CLIENT_SECRET || "";
@@ -37,6 +63,7 @@ export class TwitchClient {
 	public onChatMessage: ((message: ChatMessage) => void) | null = null;
 	public onChannelEvent: ((event: TwitchChannelEvent) => void) | null = null;
 	public onNewSubscription: (() => void) | null = null;
+	public onAuthComplete: (() => void) | null = null;
 
 	constructor() {
 		console.log("TwitchClient initialized");
@@ -66,6 +93,7 @@ export class TwitchClient {
 		console.log("Twitch auth successful, access token obtained", this.user);
 		await this.loadInitialChannelData();
 		this.startListeningChat();
+		this.onAuthComplete?.();
 	}
 
 	private async loadInitialChannelData() {
@@ -159,5 +187,119 @@ export class TwitchClient {
 				this.channelId || TwitchClient.channel,
 			);
 		return subscriptionData.getTotalCount();
+	}
+
+	async getUpcomingStream(): Promise<(TwitchLive & WithCategoryName) | null> {
+		if (this.needsAuth) {
+			throw new Error("Not authenticated with Twitch");
+		}
+		const schedule = await this.apiClient.schedule.getSchedule(
+			this.channelId || TwitchClient.channel,
+		);
+		const now = new Date();
+		const next = schedule.data.segments
+			?.filter((s) => s.startDate > now && s.cancelEndDate === null)
+			.sort((a, b) => a.startDate.getTime() - b.startDate.getTime())[0];
+		if (!next) return null;
+		const tagsSplitPos = next.title.lastIndexOf(titleTagsSeparator);
+		const [title, tagsStr] =
+			tagsSplitPos !== -1
+				? [
+						next.title.slice(0, tagsSplitPos).trim(),
+						next.title.slice(tagsSplitPos + titleTagsSeparator.length).trim(),
+					]
+				: [next.title, ""];
+		const tags = tagsStr
+			.split(" ")
+			.map((t) => t.trim().replace(/^#/, ""))
+			.filter((t) => t.length > 0);
+
+		let categoryInfo: TwitchCategoryInfo;
+		if (next.categoryId) {
+			categoryInfo = next.categoryName
+				? { categoryId: next.categoryId, categoryName: next.categoryName }
+				: { categoryId: next.categoryId, categoryName: await this.getGameNameById(next.categoryId) ?? defaultGameName };
+		} else if (next.categoryName) {
+			categoryInfo = { categoryName: next.categoryName };
+		} else {
+			const defaultGame =
+				await this.apiClient.games.getGameByName(defaultGameName);
+			if (!defaultGame) {
+				throw new Error("Failed to get default game info from Twitch API");
+			}
+			categoryInfo = {
+				categoryId: defaultGame.id,
+				categoryName: defaultGame.name,
+			};
+		}
+
+		return {
+			title: title,
+			tags: tags,
+			startDate: next.startDate,
+			endDate: next.endDate,
+			...categoryInfo,
+		};
+	}
+
+	async getGameNameById(id: string): Promise<string | null> {
+		const game = await this.apiClient.games.getGameById(id);
+		return game?.name ?? null;
+	}
+
+	async getGameIdByName(name: string): Promise<string | null> {
+		const game = await this.apiClient.games.getGameByName(name);
+		return game?.id ?? null;
+	}
+
+	async getGameId(data: TwitchLive): Promise<string> {
+		if ("categoryId" in data) return data.categoryId;
+		const categoryName =
+			"categoryName" in data ? data.categoryName : defaultGameName;
+		return this.getGameIdByName(categoryName).then((id) => {
+			if (!id) {
+				throw new Error(
+					`Failed to get game ID for category name: ${categoryName}`,
+				);
+			}
+			return id;
+		});
+	}
+
+	async createScheduleSegment(data: TwitchLive): Promise<void> {
+		if (this.needsAuth) {
+			throw new Error("Not authenticated with Twitch");
+		}
+		const categoryId =
+			"categoryId" in data
+				? data.categoryId
+				: await this.getGameIdByName(defaultGameName);
+		const titleWithTags = `${data.title} | ${data.tags.map(tag => `#${tag}`).join(" ")}`;
+		await this.apiClient.schedule.createScheduleSegment(
+			this.channelId || TwitchClient.channel,
+			{
+				title: titleWithTags,
+				categoryId: await this.getGameId(data),
+				timezone: "Europe/Paris",
+				startDate: data.startDate.toISOString(),
+				// In minutes
+				duration: (data.endDate.getTime() - data.startDate.getTime()) / 60_000,
+				isRecurring: false,
+			},
+		);
+	}
+
+	async updateChannelInfo(data: TwitchLive): Promise<void> {
+		if (this.needsAuth) {
+			throw new Error("Not authenticated with Twitch");
+		}
+		await this.apiClient.channels.updateChannelInfo(
+			this.channelId || TwitchClient.channel,
+			{
+				title: data.title,
+				gameId: await this.getGameId(data),
+				tags: [...new Set([...alwaysTags, ...data.tags])],
+			},
+		);
 	}
 }

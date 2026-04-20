@@ -122,6 +122,73 @@ const connectionManager = ConnectionManager.init("admin", async (message) => {
 				countdownInterval = setInterval(updateMusicSyncDisplay, 100);
 			}
 			break;
+		case "twitchSchedule": {
+			const upcomingStreamEl = document.getElementById(
+				"upcoming-stream",
+			) as HTMLDivElement;
+			const streamInfoForm = document.getElementById(
+				"stream-info-form",
+			) as HTMLFormElement;
+			const statusEl = document.getElementById(
+				"stream-info-status",
+			) as HTMLParagraphElement;
+			if (message.upcomingStream) {
+				const { title, startDate, endDate, categoryName, tags } =
+					message.upcomingStream;
+				// Title
+				(
+					document.getElementById("next-stream-title") as HTMLElement
+				).textContent = title;
+				// Dates
+				(
+					document.getElementById("next-stream-date") as HTMLElement
+				).textContent =
+					`${new Date(startDate).toLocaleString("fr-FR")} - ${new Date(endDate).toLocaleString("fr-FR")}`;
+				// Category
+				(
+					document.getElementById("next-stream-category") as HTMLElement
+				).textContent = categoryName;
+				// Tags
+				(
+					document.getElementById("next-stream-tags") as HTMLElement
+				).textContent = tags.join(", ");
+				upcomingStreamEl.hidden = false;
+				streamInfoForm.hidden = true;
+				if (message.autoApplied) {
+					statusEl.textContent =
+						"✓ Informations de diffusion appliquées automatiquement.";
+					statusEl.dataset.state = "success";
+					statusEl.hidden = false;
+				} else {
+					statusEl.hidden = true;
+				}
+			} else {
+				upcomingStreamEl.hidden = true;
+				streamInfoForm.hidden = false;
+				statusEl.hidden = true;
+			}
+			break;
+		}
+		case "updateStreamInfoResult": {
+			const statusEl = document.getElementById(
+				"stream-info-status",
+			) as HTMLParagraphElement;
+			const submitBtn = document.querySelector(
+				"#stream-info-form button[type=submit]",
+			) as HTMLButtonElement;
+			if (message.success) {
+				statusEl.textContent = message.applied
+					? "✓ Live planifié et informations de diffusion appliquées."
+					: "✓ Live planifié. Les informations seront appliquées moins d'une heure avant le live.";
+				statusEl.dataset.state = "success";
+			} else {
+				statusEl.textContent = `Erreur : ${message.error ?? "inconnue"}`;
+				statusEl.dataset.state = "error";
+			}
+			statusEl.hidden = false;
+			submitBtn.disabled = false;
+			break;
+		}
 		default:
 			console.warn("Unknown message type received: ", message);
 	}
@@ -443,6 +510,49 @@ async function initAdminUI() {
 			type: "setSoundMuted",
 			input: "music",
 			muted: muteMusicCheckbox.checked,
+		});
+	});
+
+	const streamInfoForm = document.getElementById(
+		"stream-info-form",
+	) as HTMLFormElement;
+	streamInfoForm.addEventListener("submit", (e) => {
+		e.preventDefault();
+		const title = (
+			document.getElementById("stream-title") as HTMLInputElement
+		).value.trim();
+		const gameName = (
+			document.getElementById("stream-game") as HTMLInputElement
+		).value.trim();
+		const tagsRaw = (document.getElementById("stream-tags") as HTMLInputElement)
+			.value;
+		const tags = tagsRaw
+			.split(",")
+			.map((t) => t.trim())
+			.filter(Boolean);
+		const startDate = (
+			document.getElementById("stream-start-date") as HTMLInputElement
+		).value;
+		const endDate = (
+			document.getElementById("stream-end-date") as HTMLInputElement
+		).value;
+		const statusEl = document.getElementById(
+			"stream-info-status",
+		) as HTMLParagraphElement;
+		const submitBtn = streamInfoForm.querySelector(
+			"button[type=submit]",
+		) as HTMLButtonElement;
+		statusEl.textContent = "Envoi en cours…";
+		statusEl.dataset.state = "pending";
+		statusEl.hidden = false;
+		submitBtn.disabled = true;
+		connectionManager.sendMessage({
+			type: "updateStreamInfo",
+			title,
+			categoryName: gameName,
+			tags,
+			startDate: new Date(startDate).toISOString(),
+			endDate: new Date(endDate).toISOString(),
 		});
 	});
 }

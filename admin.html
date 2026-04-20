@@ -53,6 +53,38 @@
 		</details>
 		<details id="twitch" open>
 			<summary>Twitch</summary>
+			<section id="upcoming-stream" hidden>
+				<h2>Prochain live</h2>
+				<p>Titre: <strong id="next-stream-title"></strong></p>
+				<p><strong id="next-stream-date"></strong></p>
+				<p>Catégorie: <strong id="next-stream-category"></strong></p>
+				<p>Tags: <strong id="next-stream-tags"></strong></p>
+			</section>
+			<form id="stream-info-form" hidden>
+				<p>Aucun live planifié — configurez les informations de diffusion:</p>
+				<label>
+					Titre
+					<input type="text" id="stream-title" placeholder="Titre du live" required>
+				</label>
+				<label>
+					Catégorie
+					<input type="text" id="stream-game" placeholder="Nom de la catégorie" required>
+				</label>
+				<label>
+					Tags <small>(séparés par des virgules)</small>
+					<input type="text" id="stream-tags" placeholder="ex: français, programmation">
+				</label>
+				<label>
+					Date et heure du live
+					<input type="datetime-local" id="stream-start-date" required>
+				</label>
+				<label>
+					Date et heure de fin (prévue) du live
+					<input type="datetime-local" id="stream-end-date" required>
+				</label>
+				<button type="submit">Créer et appliquer</button>
+			</form>
+			<p id="stream-info-status" hidden></p>
 		</details>
 	</main>
 </body>
